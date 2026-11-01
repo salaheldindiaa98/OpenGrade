@@ -69,6 +69,10 @@ textarea{resize:vertical}input:disabled,select:disabled{opacity:.55}
 .keybanner{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
 #toast{position:fixed;left:50%;bottom:90px;transform:translate(-50%,20px);background:#14202b;color:#fff;padding:11px 16px;border-radius:12px;max-width:92vw;opacity:0;pointer-events:none;transition:.22s;z-index:50;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.3)}#toast.show{opacity:1;transform:translate(-50%,0)}
 
+.mapwrap{flex:none;overflow:auto;max-height:62vh;min-height:240px;border:1px solid var(--line);border-radius:12px;background:#fff;touch-action:pan-x pan-y}
+.mapcv{display:block;max-width:none;height:auto;cursor:crosshair}
+.tplthumb{width:46px;height:64px;object-fit:cover;object-position:top;border:1px solid var(--line);border-radius:6px;background:#fff;flex:none}
+
 </style>
 </head>
 <body>
@@ -231,10 +235,20 @@ function components(bin, w, h, minA, maxA) {
   return out;
 }
 
+function hullIdx(P) {                       // indices of the convex hull of candidate centres (monotone chain)
+  const idx = P.map((_, i) => i).sort((a, b) => P[a].cx - P[b].cx || P[a].cy - P[b].cy);
+  if (idx.length < 3) return idx;
+  const cr = (o, a, b) => (P[a].cx - P[o].cx) * (P[b].cy - P[o].cy) - (P[a].cy - P[o].cy) * (P[b].cx - P[o].cx), lo = [], up = [];
+  for (const i of idx) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], i) <= 0) lo.pop(); lo.push(i); }
+  for (let t = idx.length - 1; t >= 0; t--) { const i = idx[t]; while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], i) <= 0) up.pop(); up.push(i); }
+  lo.pop(); up.pop(); return lo.concat(up);
+}
 function pickQuad(cands, L) {
   const m = L.markers, ar = (m[1].cx - m[0].cx) / (m[3].cy - m[0].cy), src = m.map(q => [q.cx, q.cy]);
   cands.sort((a, b) => b.area - a.area);
-  const c = cands.slice(0, 16);
+  const hull = hullIdx(cands), pickSet = new Set(hull);        // the corner squares sit at the extremes of the page, so always keep the outermost candidates
+  for (let i = 0; i < cands.length && pickSet.size < 22 && i < 12; i++) pickSet.add(i);
+  const c = [...pickSet].sort((a, b) => a - b).slice(0, 22).map(i => cands[i]);
   const found = [];
   for (let a = 0; a < c.length; a++) for (let b = a + 1; b < c.length; b++)
   for (let d = b + 1; d < c.length; d++) for (let e = d + 1; e < c.length; e++) {
@@ -293,8 +307,10 @@ function findMarkers(g, w, h, L) {      // ranked list of possible corner sets (
   const bin = adaptiveDark(g, w, h, half, 18);
   const comps = components(bin, w, h, Math.pow(0.006 * D, 2), Math.pow(0.13 * D, 2))
     .filter(c => c.ratio >= 0.63 && c.ratio <= 0.86 && c.elong >= 0.5 && isolated(bin, w, h, c));
-  if (comps.length < 4) return [];
-  return pickQuad(comps, L).map(q => q.pts.map(p => ({ x: p.cx, y: p.cy })));
+  const out = []; out.comps = comps; out.errs = [];
+  if (comps.length < 4) return out;
+  for (const q of pickQuad(comps, L)) { out.push(q.pts.map(p => ({ x: p.cx, y: p.cy }))); out.errs.push(q.err); }
+  return out;
 }
 
 function solveH(src, dst) {           // 4 point pairs -> homography h0..h7 (h8 = 1)
@@ -352,7 +368,11 @@ function readFills(g, w, h, H, L) {
       const uv = applyH(H, b.cx, b.cy + dy); vals.push(bil(g, w, h, uv[0], uv[1]));
     }
     const W = percentile(vals, 0.5); whites.push(W);
-    fills.push(mean[q].map(m => Math.max(0, Math.min(1, (W - m) / Math.max(W, 1)))));
+    fills.push(mean[q].map((m, j) => {
+      let d = (W - m) / Math.max(W, 1);
+      if (L.base) { const b0 = L.base[q][j]; d = (d - b0) / (1 - b0); }       // subtract what an empty bubble looks like (e.g. the printed letter)
+      return Math.max(0, Math.min(1, d));
+    }));
   }
   // alignment check: printed rings should be dark, just outside them should be white
   let al = 0, cnt = 0;
@@ -364,9 +384,9 @@ function readFills(g, w, h, H, L) {
       for (let a = 0; a < 12; a++) {
         const cs = Math.cos(a * Math.PI / 6 + 0.13), sn = Math.sin(a * Math.PI / 6 + 0.13);
         let mn = 255;
-        for (const dr of [-0.4, 0, 0.4]) { const uv = applyH(H, b.cx + (r + dr) * cs, b.cy + (r + dr) * sn); const v = bil(g, w, h, uv[0], uv[1]); if (v < mn) mn = v; }
+        for (const dr of [-0.16 * r, 0, 0.16 * r]) { const uv = applyH(H, b.cx + (r + dr) * cs, b.cy + (r + dr) * sn); const v = bil(g, w, h, uv[0], uv[1]); if (v < mn) mn = v; }
         ringS += mn;
-        const uo = applyH(H, b.cx + (r + 1.1) * cs, b.cy + (r + 1.1) * sn); outS += bil(g, w, h, uo[0], uo[1]);
+        const uo = applyH(H, b.cx + (r * 1.44) * cs, b.cy + (r * 1.44) * sn); outS += bil(g, w, h, uo[0], uo[1]);
       }
       al += (outS / 12 - ringS / 12) / Math.max(W, 1); cnt++;
     }
@@ -389,24 +409,61 @@ function classifyRow(d) {
 function classifyAll(fills) { return fills.map(classifyRow); }
 
 const MIN_ALIGN = 0.22;
+
+function mul3(A, B) { const o = new Array(9).fill(0); for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) for (let k = 0; k < 3; k++) o[i * 3 + j] += A[i * 3 + k] * B[k * 3 + j]; return o; }
+function lsH(src, dst) {               // homography from 4 or more point pairs (least squares, normalised)
+  const n = src.length; if (n < 4) return null;
+  const norm = pts => { let mx = 0, my = 0; for (const p of pts) { mx += p[0]; my += p[1]; } mx /= pts.length; my /= pts.length; let sd = 0; for (const p of pts) sd += Math.hypot(p[0] - mx, p[1] - my); sd /= pts.length; const sc = Math.SQRT2 / Math.max(sd, 1e-9); return { mx, my, sc, T: [sc, 0, -sc * mx, 0, sc, -sc * my, 0, 0, 1] }; };
+  const ns = norm(src), nd = norm(dst), A = Array.from({ length: 8 }, () => new Array(9).fill(0));
+  for (let i = 0; i < n; i++) {
+    const x = (src[i][0] - ns.mx) * ns.sc, y = (src[i][1] - ns.my) * ns.sc, u = (dst[i][0] - nd.mx) * nd.sc, v = (dst[i][1] - nd.my) * nd.sc;
+    const r1 = [x, y, 1, 0, 0, 0, -u * x, -u * y, u], r2 = [0, 0, 0, x, y, 1, -v * x, -v * y, v];
+    for (const r of [r1, r2]) for (let a = 0; a < 8; a++) { for (let b = 0; b < 8; b++) A[a][b] += r[a] * r[b]; A[a][8] += r[a] * r[8]; }
+  }
+  for (let c = 0; c < 8; c++) {
+    let piv = c; for (let r = c + 1; r < 8; r++) if (Math.abs(A[r][c]) > Math.abs(A[piv][c])) piv = r;
+    if (Math.abs(A[piv][c]) < 1e-12) return null;
+    [A[c], A[piv]] = [A[piv], A[c]];
+    for (let r = 0; r < 8; r++) { if (r === c) continue; const f = A[r][c] / A[c][c]; for (let k = c; k < 9; k++) A[r][k] -= f * A[c][k]; }
+  }
+  const hn = A.map((row, i) => row[8] / row[i]); hn.push(1);
+  const Tdi = inv3(nd.T), Hm = mul3(mul3(Tdi, hn), ns.T), z = Hm[8];
+  return Hm.slice(0, 8).map(v => v / z);
+}
+function hScale(H, x, y) { const p0 = applyH(H, x, y), px = applyH(H, x + 1, y), py = applyH(H, x, y + 1); return Math.sqrt(Math.abs((px[0] - p0[0]) * (py[1] - p0[1]) - (px[1] - p0[1]) * (py[0] - p0[0]))); }
+
 // full pipeline on one grayscale frame. Returns {ok:false, reason} or {ok:true, pts, H, fills, align, white}
 function scanGray(gray, w, h, L, opts) {
   opts = opts || {};
+  const minAlign = L.minAlign || MIN_ALIGN;
   const ds = downscale(gray, w, h, opts.maxSide || 900);
   const sets = findMarkers(ds.g, ds.w, ds.h, L);
   if (!sets.length) return { ok: false, reason: 'markers' };
   const src = L.markers.map(m => [m.cx, m.cy]);
   let best = null;
-  for (const set of sets) {
-    const pts = set.map(p => ({ x: p.x * ds.f + (ds.f - 1) / 2, y: p.y * ds.f + (ds.f - 1) / 2 }));
+  for (let i = 0; i < sets.length; i++) {
+    const tie = sets.errs[i] <= sets.errs[0] + 0.03;     // sheets with 4 identical squares look the same turned 180 degrees: try them all, keep the best fit
+    if (!tie && best && best.align >= minAlign) break;
+    const pts = sets[i].map(p => ({ x: p.x * ds.f + (ds.f - 1) / 2, y: p.y * ds.f + (ds.f - 1) / 2 }));
     const H = solveH(src, pts.map(p => [p.x, p.y]));
     if (!H) continue;
     const rd = readFills(gray, w, h, H, L);
     if (!best || rd.align > best.align) best = { ok: true, pts, H, fills: rd.fills, align: rd.align, white: rd.white };
-    if (rd.align >= MIN_ALIGN) break;
   }
   if (!best) return { ok: false, reason: 'geometry' };
-  if (best.align < MIN_ALIGN) return { ok: false, reason: 'align', align: best.align };
+  if (best.align < minAlign) return { ok: false, reason: 'align', align: best.align };
+  if (L.extra && L.extra.length && sets.comps && sets.comps.length) {      // use the extra squares too, for a more exact fit
+    const pairs = best.pts.map((p, i) => [[L.markers[i].cx, L.markers[i].cy], [p.x, p.y]]);
+    for (const m of L.extra) {
+      const p = applyH(best.H, m.cx, m.cy), tol = Math.max(5, 0.8 * m.s * hScale(best.H, m.cx, m.cy)); let bc = null, bd = 1e9;
+      for (const c of sets.comps) { const cx = c.cx * ds.f + (ds.f - 1) / 2, cy = c.cy * ds.f + (ds.f - 1) / 2, d = Math.hypot(cx - p[0], cy - p[1]); if (d < tol && d < bd) { bd = d; bc = [cx, cy]; } }
+      if (bc) pairs.push([[m.cx, m.cy], bc]);
+    }
+    if (pairs.length > 4) {
+      const H2 = lsH(pairs.map(q => q[0]), pairs.map(q => q[1]));
+      if (H2) { const rd = readFills(gray, w, h, H2, L); if (rd.align >= best.align - 0.01) best = { ok: true, pts: best.pts, H: H2, fills: rd.fills, align: rd.align, white: rd.white }; }
+    }
+  }
   return best;
 }
 
@@ -417,6 +474,164 @@ function warpGray(gray, w, h, H, L, ppm) {
     const uv = applyH(H, x / ppm, y / ppm); o[y * W + x] = bil(gray, w, h, uv[0], uv[1]);
   }
   return { data: o, w: W, h: HH };
+}
+
+/* ------------------------------------------------- importing other sheets (ZipGrade etc.) */
+function cluster1D(vals, tol) {
+  const s = vals.slice().sort((a, b) => a - b), out = []; let cur = [s[0]];
+  for (let i = 1; i < s.length; i++) { if (s[i] - s[i - 1] > tol) { out.push(cur); cur = [s[i]]; } else cur.push(s[i]); }
+  out.push(cur); return out.map(g => g.reduce((a, b) => a + b, 0) / g.length);
+}
+function withBox(c) { c.bw = c.bx1 - c.bx0 + 1; c.bh = c.by1 - c.by0 + 1; c.side = (c.bw + c.bh) / 2; c.fill = c.area / (c.bw * c.bh); c.bxc = (c.bx0 + c.bx1) / 2; c.byc = (c.by0 + c.by1) / 2; return c; }
+
+// Look at a picture of a BLANK sheet (straight, e.g. from a PDF or screenshot) and find: the black squares, and every bubble.
+function detectTemplate(gray, w, h, opts) {
+  opts = opts || {};
+  const D = Math.max(w, h), warnings = [];
+  const samp = []; for (let i = 0; i < gray.length; i += 11) samp.push(gray[i]); samp.sort((a, b) => a - b);
+  const paper = Math.max(120, samp[Math.floor(samp.length * 0.7)] || 255);
+
+  // 1) black squares
+  const blk = new Uint8Array(w * h), tb = paper * 0.42;
+  for (let i = 0; i < blk.length; i++) blk[i] = gray[i] < tb ? 1 : 0;
+  const sqAll = components(blk, w, h, Math.pow(0.006 * D, 2), Math.pow(0.09 * D, 2)).map(withBox)
+    .filter(c => c.bw / c.bh > 0.85 && c.bw / c.bh < 1.18 && c.fill > 0.86);
+  let grp = [];
+  for (const c of sqAll) { const g = sqAll.filter(o => Math.abs(o.side - c.side) <= 0.1 * c.side); if (g.length > grp.length || (g.length === grp.length && grp.length && c.side > grp[0].side)) grp = g; }
+  if (grp.length < 4) return { ok: false, reason: 'squares', found: grp.length };
+  const markers = grp.map(c => ({ cx: c.cx, cy: c.cy, s: c.side }));
+  const pick = f => markers.reduce((bi, p, i) => f(p) < f(markers[bi]) ? i : bi, 0);
+  const TL = pick(p => p.cx + p.cy), BR = pick(p => -(p.cx + p.cy)), TR = pick(p => -(p.cx - p.cy)), BL = pick(p => p.cx - p.cy);
+  if (new Set([TL, TR, BR, BL]).size < 4) return { ok: false, reason: 'squares', found: grp.length };
+  const anchors = [TL, TR, BR, BL];
+  const skew = Math.atan2(markers[TR].cy - markers[TL].cy, markers[TR].cx - markers[TL].cx) * 180 / Math.PI;
+  if (Math.abs(skew) > 1.2) warnings.push('The picture looks tilted by ' + skew.toFixed(1) + '°. A straight PDF or screenshot gives better results.');
+
+  // 2) bubbles (light outlines are fine)
+  const dk = new Uint8Array(w * h), tl = paper * (opts.bubbleThr || 0.86);
+  for (let i = 0; i < dk.length; i++) dk[i] = gray[i] < tl ? 1 : 0;
+  const rings = components(dk, w, h, 12, Math.pow(0.08 * D, 2)).map(withBox)
+    .filter(c => { const ar = c.bw / c.bh; return ar > 0.8 && ar < 1.25 && c.side >= 0.012 * D && c.side <= 0.07 * D && c.fill < 0.66; });
+  let band = [];
+  for (const c of rings) { const g = rings.filter(o => Math.abs(o.side - c.side) <= 0.07 * c.side + 1); if (g.length > band.length || (g.length === band.length && band.length && c.side > band[0].side)) band = g; }
+  if (band.length < 4) return { ok: false, reason: 'bubbles', found: band.length };
+  const sides = band.map(c => c.side).sort((a, b) => a - b), d = sides[Math.floor(sides.length / 2)];
+  const ex = opts.exclude || [], ad = opts.add || [];       // the user's fixes: bubbles to remove / add
+  const B = band.map(c => ({ x: c.bxc, y: c.byc })).filter(b => !ex.some(p => Math.hypot(p.x - b.x, p.y - b.y) < 0.45 * d)).concat(ad.map(p => ({ x: p.x, y: p.y })));
+  if (B.length < 4) return { ok: false, reason: 'bubbles', found: B.length };
+
+  // 3) spacing, then connected blocks
+  const gx = [], gy = [], nr = new Array(B.length).fill(-1), nb = new Array(B.length).fill(-1);
+  for (let i = 0; i < B.length; i++) {
+    let bx = 1e9, by = 1e9;
+    for (let j = 0; j < B.length; j++) {
+      if (i === j) continue; const dx = B[j].x - B[i].x, dy = B[j].y - B[i].y;
+      if (Math.abs(dy) < 0.35 * d && dx > 0.5 * d && dx < bx) { bx = dx; nr[i] = j; }
+      if (Math.abs(dx) < 0.35 * d && dy > 0.5 * d && dy < by) { by = dy; nb[i] = j; }
+    }
+    if (nr[i] >= 0) gx.push(bx); if (nb[i] >= 0) gy.push(by);
+  }
+  const pct = (a, f) => { if (!a.length) return 0; const s = a.slice().sort((x, y) => x - y); return s[Math.floor(f * (s.length - 1))]; };
+  const px = pct(gx, 0.35) || d * 1.3, py = pct(gy, 0.35) || d * 1.5;
+  const par = B.map((_, i) => i), find = i => { while (par[i] !== i) { par[i] = par[par[i]]; i = par[i]; } return i; };
+  for (let i = 0; i < B.length; i++) {
+    if (nr[i] >= 0 && B[nr[i]].x - B[i].x <= 1.4 * px) par[find(i)] = find(nr[i]);
+    if (nb[i] >= 0 && B[nb[i]].y - B[i].y <= 1.4 * py) par[find(i)] = find(nb[i]);
+  }
+  const groups = new Map(); B.forEach((b, i) => { const r = find(i); if (!groups.has(r)) groups.set(r, []); groups.get(r).push(b); });
+  let blocks = [];
+  for (const members of groups.values()) {
+    if (members.length < 2) continue;
+    const cols = cluster1D(members.map(m => m.x), 0.45 * d), rows = cluster1D(members.map(m => m.y), 0.45 * d), cells = []; let nDet = 0;
+    for (let r = 0; r < rows.length; r++) for (let c = 0; c < cols.length; c++) {
+      const hit = members.some(m => Math.abs(m.x - cols[c]) < 0.4 * d && Math.abs(m.y - rows[r]) < 0.4 * d); if (hit) nDet++;
+      cells.push({ r, c, x: cols[c], y: rows[r], inferred: !hit });
+    }
+    blocks.push({ cols, rows, cells, nDet, x0: cols[0] - d / 2, x1: cols[cols.length - 1] + d / 2, y0: rows[0] - d / 2, y1: rows[rows.length - 1] + d / 2 });
+  }
+  if (!blocks.length) return { ok: false, reason: 'blocks' };
+  if (opts.forceK) {                                       // the user says how many choices each question has: split wide blocks
+    const nb = [];
+    for (const b of blocks) {
+      if (b.cols.length > opts.forceK && b.cols.length % opts.forceK === 0) {
+        for (let s0 = 0; s0 < b.cols.length; s0 += opts.forceK) {
+          const cols = b.cols.slice(s0, s0 + opts.forceK), cells = b.cells.filter(c => c.c >= s0 && c.c < s0 + opts.forceK).map(c => ({ r: c.r, c: c.c - s0, x: c.x, y: c.y, inferred: c.inferred }));
+          nb.push({ cols, rows: b.rows, cells, nDet: cells.filter(c => !c.inferred).length, x0: cols[0] - d / 2, x1: cols[cols.length - 1] + d / 2, y0: b.y0, y1: b.y1 });
+        }
+      } else nb.push(b);
+    }
+    blocks = nb;
+  }
+  blocks.sort((a, b) => Math.abs(a.x0 - b.x0) > 1.5 * d ? a.x0 - b.x0 : a.y0 - b.y0);
+  const kCount = new Map(); for (const b of blocks) kCount.set(b.cols.length, (kCount.get(b.cols.length) || 0) + b.rows.length);
+  let k = 0, kBest = -1; for (const [kk, v] of kCount) if (v > kBest) { kBest = v; k = kk; }
+  if (opts.forceK) k = opts.forceK;
+  let run = 1;
+  blocks.forEach((b, i) => { b.id = i; b.k = b.cols.length; b.include = b.k === k && b.k >= 2; b.start = run; if (b.include) run += b.rows.length; if (!b.include) b.start = 0; b.suspect = b.nDet < 0.7 * b.cells.length; });
+  if (blocks.some(b => !b.include)) warnings.push(blocks.filter(b => !b.include).length + ' block(s) with a different number of columns were left out (for example a student-ID grid). You can switch them on.');
+  return { ok: true, w, h, paper, markers, anchors, skew, d, px, py, k, blocks, warnings, nBubbles: B.length };
+}
+
+// Turn the detection (after the user's fixes) into a sheet template that the scanner can use.
+function buildTemplate(det, gray, opts) {
+  opts = opts || {};
+  const inc = det.blocks.filter(b => b.include && b.k === (opts.k || det.k)).sort((a, b) => a.start - b.start);
+  const questions = [];
+  for (const b of inc) for (let r = 0; r < b.rows.length; r++) questions.push(b.cells.filter(c => c.r === r).sort((p, q) => p.c - q.c).map(c => [c.x, c.y]));
+  if (!questions.length) return { ok: false, reason: 'empty' };
+  const k = questions[0].length, n = questions.length;
+  const t = { v: 1, name: opts.name || 'Imported sheet', w: det.w, h: det.h, markers: det.markers.map(m => ({ cx: m.cx, cy: m.cy, s: m.s })), anchors: det.anchors.slice(), n, k,
+    r: Math.max(3, det.d / 2 - 1.2), rowPitch: det.py, questions, base: null, alignRef: 0, minAlign: 0.08 };
+  const L = layoutFromTemplate(t);
+  // what an EMPTY bubble looks like (printed letters inside), measured on the blank picture
+  const I = [1, 0, 0, 0, 1, 0, 0, 0];
+  const rd = readFills(gray, det.w, det.h, I, L);
+  t.base = rd.fills.map(row => row.map(v => Math.round(Math.min(0.25, v) * 1000) / 1000));
+  // how strong the printed rings look in a typical camera picture (smaller, a little blurry)
+  let ref = 9;
+  for (const side of [900, 640]) {
+    const sc = side / Math.max(det.w, det.h), W2 = Math.round(det.w * sc), H2 = Math.round(det.h * sc), g2 = new Float32Array(W2 * H2);
+    for (let y = 0; y < H2; y++) for (let x = 0; x < W2; x++) g2[y * W2 + x] = bil(gray, det.w, det.h, (x + 0.5) / sc - 0.5, (y + 0.5) / sc - 0.5);
+    const bl = new Uint8Array(W2 * H2);
+    for (let y = 0; y < H2; y++) for (let x = 0; x < W2; x++) { let s = 0, c = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const yy = y + dy, xx = x + dx; if (yy >= 0 && yy < H2 && xx >= 0 && xx < W2) { s += g2[yy * W2 + xx]; c++; } } bl[y * W2 + x] = (g2[y * W2 + x] * 0.5 + (s / c) * 0.5 + 0.5) | 0; }
+    const H = [sc, 0, 0.5 * sc - 0.5, 0, sc, 0.5 * sc - 0.5, 0, 0], r2 = readFills(bl, W2, H2, H, L); ref = Math.min(ref, r2.align);
+  }
+  t.alignRef = Math.round(ref * 1000) / 1000; t.minAlign = Math.max(0.04, Math.round(0.4 * ref * 1000) / 1000);
+  return { ok: true, template: t };
+}
+
+function layoutFromTemplate(t) {
+  const n = t.n, k = t.k, questions = [];
+  for (let q = 0; q < n; q++) {
+    const bs = t.questions[q].map(p => ({ cx: p[0], cy: p[1] })), x0 = bs[0].cx - t.r * 1.8, x1 = bs[k - 1].cx + t.r * 1.5;
+    questions.push({ q, row: q, col: 0, bubbles: bs, labelX: x0, labelY: bs[0].cy, box: { x: x0, y: bs[0].cy - t.rowPitch / 2, w: x1 - x0, h: t.rowPitch } });
+  }
+  const mk = t.anchors.map(i => t.markers[i]), extra = t.markers.filter((_, i) => t.anchors.indexOf(i) < 0);
+  return { n, k, paper: 'tpl', P: { w: t.w, h: t.h }, markers: mk, extra, r: t.r, rowPitch: t.rowPitch, questions, base: t.base, minAlign: t.minAlign, imgPpm: 1000 / t.w, tpl: true, title: t.name, subtitle: '' };
+}
+
+function selfTestTemplate(t, gray, w, h, seed) {
+  const t0 = Date.now(), L = layoutFromTemplate(t), rng = mulberry32(seed || 7), { ans } = randomAnswers(L, rng), canon = renderFromTemplate(gray, w, h, L, ans);
+  const cam = randomCam(rng, 'portrait', L, c => { c.w = 720; c.h = 960; c.cx = 360; c.cy = 480; c.scale *= 0.667; }), ph = photo(canon, L, cam, rng);
+  const sc = scanGray(ph.g, ph.w, ph.h, L);
+  if (!sc.ok) return { pass: false, msg: 'Could not find the corner squares in the test picture (' + sc.reason + ').', ms: Date.now() - t0 };
+  const cmp = compare(L, ans, classifyAll(sc.fills));
+  return { pass: cmp.wrong === 0, total: L.n, ...cmp, align: sc.align, ms: Date.now() - t0 };
+}
+
+// paint pen marks on a copy of the blank sheet picture (used by the built-in test)
+function renderFromTemplate(gray, w, h, L, answers) {
+  const g = Float32Array.from(gray), u = L.r / 2.5;
+  for (const Q of L.questions) for (let j = 0; j < Q.bubbles.length; j++) {
+    if ((answers[Q.q] || []).indexOf(j) < 0) continue;
+    const st = answers.style(Q.q, j), b = Q.bubbles[j], R0 = L.r * st.rr;
+    for (let y = Math.floor(b.cy - L.r - 2); y <= Math.ceil(b.cy + L.r + 2); y++) for (let x = Math.floor(b.cx - L.r - 2); x <= Math.ceil(b.cx + L.r + 2); x++) {
+      if (x < 0 || y < 0 || x >= w || y >= h) continue;
+      const d = Math.hypot(x - b.cx - st.ox * u, y - b.cy - st.oy * u), cov = Math.max(0, Math.min(1, 0.5 + (R0 - d)));
+      if (cov > 0) g[y * w + x] = g[y * w + x] * (1 - cov) + Math.min(g[y * w + x], st.level) * cov;
+    }
+  }
+  return { g: Uint8Array.from(g, v => Math.max(0, Math.min(255, v + 0.5))), w, h, ppm: 1 };
 }
 
 /* --------------------------------------------------------- synthetic photos */
@@ -520,8 +735,9 @@ function randomCam(rng, kind, L, tweak) {
   const land = kind === 'landscape', w = land ? 1440 : 1080, h = land ? 1080 : 1440;
   const rotBase = land ? (rng() < 0.5 ? 90 : 270) : (rng() < 0.5 ? 0 : 180);
   const frame = land ? w : h;
+  const pu = L.tpl ? 297 / L.P.h : 1;          // imported sheets use pixels, not millimetres: keep the same real-world tilt
   const cam = {
-    w, h, scale: (0.80 + rng() * 0.14) * frame / L.P.h, rot: rotBase + (rng() - 0.5) * 20, ax: (rng() - 0.5) * 0.0016, ay: (rng() - 0.5) * 0.0016,
+    w, h, scale: (0.80 + rng() * 0.14) * frame / L.P.h, rot: rotBase + (rng() - 0.5) * 20, ax: (rng() - 0.5) * 0.0016 * pu, ay: (rng() - 0.5) * 0.0016 * pu,
     cx: w / 2 + (rng() - 0.5) * 50, cy: h / 2 + (rng() - 0.5) * 50, noise: 3 + rng() * 4, blur: rng() * 0.5,
     gx: (rng() - 0.5) * 0.35, gy: (rng() - 0.5) * 0.35, k1: (rng() - 0.5) * 0.02, bg: 55 + rng() * 40
   };
@@ -573,7 +789,7 @@ function selfTest(cfg, seed) {
 }
 
 return { LETTERS, TH, pageSize, makeLayout, sheetSVG, toGray, downscale, findMarkers, adaptiveDark, components, pickQuad, solveH, applyH, readFills, classifyRow, classifyAll,
-         scanGray, warpGray, mulberry32, renderCanonical, photo, randomAnswers, randomCam, compare, selfTest };
+         scanGray, warpGray, lsH, detectTemplate, buildTemplate, layoutFromTemplate, renderFromTemplate, selfTestTemplate, mulberry32, renderCanonical, photo, randomAnswers, randomCam, compare, selfTest };
 })();
 
 
@@ -792,7 +1008,7 @@ const S = { index: [], exam: null, tab: 'setup', paperView: null };
 function newExam() {
   const n = 20;
   return { id: uid(), name: 'New exam', n, k: 5, paper: 'A4', title: '', sens: 'normal', points: 1, review: 'each', continuous: true,
-    key: Array(n).fill(null), roster: [], papers: {}, cursor: null, created: Date.now(), updated: Date.now() };
+    key: Array(n).fill(null), roster: [], papers: {}, cursor: null, tpl: null, created: Date.now(), updated: Date.now() };
 }
 async function loadIndex() { S.index = (await store.get('index')) || []; }
 async function saveIndex() { await store.set('index', S.index); }
@@ -811,7 +1027,7 @@ async function deleteExam(id) {
   if (e) for (const rid of Object.keys(e.papers || {})) await store.del('img:' + id + ':' + rid);
   await store.del('exam:' + id); S.index = S.index.filter(x => x.id !== id); await saveIndex();
 }
-const layoutOf = e => OGCore.makeLayout({ n: e.n, k: e.k, paper: e.paper, title: e.title || e.name, subtitle: '' });
+const layoutOf = e => e.tpl ? OGCore.layoutFromTemplate(e.tpl) : OGCore.makeLayout({ n: e.n, k: e.k, paper: e.paper, title: e.title || e.name, subtitle: '' });
 
 /* ---------- students ---------- */
 function sortRoster(list) {
@@ -932,6 +1148,7 @@ function exportCsv(e) {
 
 /* ---------- printing the sheet ---------- */
 function printSheet(e) {
+  if (e.tpl) return toast('This exam uses an imported sheet. Print it from where it came from (for example ZipGrade).');
   const L = layoutOf(e), svg = OGCore.sheetSVG(L), P = L.P;
   const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safeName(e.name)} sheet</title><style>
 @page{size:${P.w}mm ${P.h}mm;margin:0}html,body{margin:0;background:#888}
@@ -944,6 +1161,7 @@ function printSheet(e) {
   const w = window.open(url, '_blank'); if (!w) { download(safeName(e.name) + '_sheet.html', new Blob([html], { type: 'text/html' })); toast('Pop-up blocked — the sheet was downloaded instead. Open it and print.'); }
 }
 async function downloadPng(e) {
+  if (e.tpl) return;
   const L = layoutOf(e), svg = OGCore.sheetSVG(L).replace('width="' + L.P.w + 'mm" height="' + L.P.h + 'mm"', 'width="' + Math.round(L.P.w / 25.4 * 300) + '" height="' + Math.round(L.P.h / 25.4 * 300) + '"');
   const img = new Image(); const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
   await new Promise((ok, no) => { img.onload = ok; img.onerror = no; img.src = url; });
@@ -1005,13 +1223,34 @@ function renderTab() {
 /* ---------------------------------------------------------------- setup */
 function field(label, input, hint) { return h('label', { class: 'field' }, h('span', null, label), input, hint ? h('small', { class: 'muted' }, hint) : null); }
 
+function sheetCard(papersExist) {
+  const e = S.exam, refresh = () => renderTab();
+  const use = t => { applyTemplateToExam(t); refresh(); toast('Sheet set: ' + t.n + ' questions × ' + t.k + ' choices'); };
+  const body = [h('h3', null, 'Answer sheet type')];
+  if (e.tpl) body.push(h('div', { class: 'row gap' }, e.tpl.thumb ? h('img', { class: 'tplthumb', src: e.tpl.thumb, alt: '' }) : null,
+    h('div', { class: 'grow' }, h('b', null, 'Imported: ' + e.tpl.name), h('div', { class: 'muted small' }, e.tpl.n + ' questions · ' + e.tpl.k + ' choices'))));
+  else body.push(h('p', { class: 'muted' }, 'Now using the OpenGrade sheet (you can print it below). You can also import any other sheet, such as a ZipGrade sheet, from a PDF or picture.'));
+  if (papersExist) body.push(h('small', { class: 'muted' }, 'The sheet cannot be changed because papers were already scanned in this exam.'));
+  else {
+    body.push(h('div', { class: 'row gap wrap' },
+      h('button', { class: 'btn primary', onclick: () => openMapper({ onSave: use }) }, '📥 Import a sheet (PDF / image)'),
+      e.tpl ? h('button', { class: 'btn', onclick: async () => { const b = await store.get('tplimg:' + e.tpl.id); if (!b) return toast('The saved picture is missing. Import the sheet again.'); const bmp = await createImageBitmap(b), c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height; c.getContext('2d').drawImage(bmp, 0, 0); openMapper({ canvas: c, name: e.tpl.name, existingId: e.tpl.id, onSave: use }); } }, 'Fix the map') : null,
+      e.tpl ? h('button', { class: 'btn', onclick: () => { e.tpl = null; saveExam(true); refresh(); } }, 'Use OpenGrade sheet') : null));
+    const saved = TPL.index.filter(x => !e.tpl || x.id !== e.tpl.id);
+    if (saved.length) body.push(h('div', { class: 'stack' }, h('b', { class: 'small' }, 'Your saved sheets'), saved.map(it => h('div', { class: 'row gap' }, it.thumb ? h('img', { class: 'tplthumb', src: it.thumb, alt: '' }) : null,
+      h('div', { class: 'grow' }, h('b', null, it.name), h('div', { class: 'muted small' }, it.n + ' questions · ' + it.k + ' choices')),
+      h('button', { class: 'btn sm', onclick: async () => { const t = await store.get('tpl:' + it.id); if (t) use(t); else toast('Could not open this saved sheet'); } }, 'Use'),
+      h('button', { class: 'btn sm', 'aria-label': 'Delete saved sheet', onclick: async () => { if (!confirm('Delete the saved sheet “' + it.name + '”? Exams that already use it keep working.')) return; await deleteTemplateRecord(it.id); refresh(); } }, '🗑')))));
+  }
+  return h('section', { class: 'card stack' }, body);
+}
+
 function setupView() {
-  const e = S.exam, locked = Object.keys(e.papers).length > 0;
-  const keySet = e.key.filter(k => k !== null).length;
+  const e = S.exam, papersExist = Object.keys(e.papers).length > 0, locked = papersExist || !!e.tpl;
   const wrap = h('div', { class: 'pad stack' });
 
   const numIn = h('input', { type: 'number', min: 1, max: 100, value: e.n, disabled: locked, inputmode: 'numeric' });
-  const kSel = h('select', { disabled: locked }, [2, 3, 4, 5, 6].map(k => h('option', { value: k, selected: e.k === k }, k + ' choices (' + LET.slice(0, k).split('').join(' ') + ')')));
+  const kSel = h('select', { disabled: locked }, [2, 3, 4, 5, 6].concat(e.k > 6 ? [e.k] : []).map(k => h('option', { value: k, selected: e.k === k }, k + ' choices (' + LET.slice(0, k).split('').join(' ') + ')')));
   const pSel = h('select', { disabled: locked }, [['A4', 'A4'], ['Letter', 'US Letter']].map(([v, l]) => h('option', { value: v, selected: e.paper === v }, l)));
   const tryLayout = (patch) => { try { OGCore.makeLayout(Object.assign({ n: e.n, k: e.k, paper: e.paper }, patch)); return true; } catch (er) { toast(er.message); return false; } };
   numIn.onchange = () => { const v = clamp(Math.round(+numIn.value || 1), 1, 100); if (!tryLayout({ n: v })) { numIn.value = e.n; return; } e.n = v; e.key = Array.from({ length: v }, (_, i) => e.key[i] ?? null); saveExam(); renderTab(); };
@@ -1022,10 +1261,11 @@ function setupView() {
   const ptsIn = h('input', { type: 'number', min: 0.25, step: 0.25, value: e.points, inputmode: 'decimal', onchange: ev => { e.points = clamp(+ev.target.value || 1, 0.25, 100); saveExam(); } });
   const senSel = h('select', { onchange: ev => { e.sens = ev.target.value; saveExam(); } }, [['normal', 'Normal (pen or dark pencil)'], ['light', 'Sensitive (light pencil)']].map(([v, l]) => h('option', { value: v, selected: e.sens === v }, l)));
 
+  wrap.append(sheetCard(papersExist));
   wrap.append(h('section', { class: 'card stack' }, h('h3', null, 'Exam'),
-    field('Exam name', nameIn), field('Number of questions (1–100)', numIn), field('Choices per question', kSel), field('Paper size', pSel),
-    field('Sheet title', titleIn), field('Points per question', ptsIn), field('Mark detection', senSel, 'Use “Sensitive” if students fill bubbles lightly. Doubtful marks always go to review.'),
-    locked ? h('small', { class: 'muted' }, 'Questions, choices and paper size are locked because papers were already scanned.') : null));
+    field('Exam name', nameIn), field('Number of questions' + (e.tpl ? '' : ' (1–100)'), numIn), field('Choices per question', kSel), e.tpl ? null : field('Paper size', pSel),
+    e.tpl ? null : field('Sheet title', titleIn), field('Points per question', ptsIn), field('Mark detection', senSel, 'Use “Sensitive” if students fill bubbles lightly. Doubtful marks always go to review.'),
+    e.tpl ? h('small', { class: 'muted' }, 'Questions and choices come from the imported sheet.') : (papersExist ? h('small', { class: 'muted' }, 'Questions, choices and paper size are locked because papers were already scanned.') : null)));
 
   // answer key
   const keyBox = h('textarea', { rows: 2, placeholder: 'Type or paste the key, e.g. ABCDDABCD…', dir: 'ltr', class: 'mono' });
@@ -1041,7 +1281,7 @@ function setupView() {
   };
   const cnt = h('span', { class: 'pill' }); const upd = () => { const c = e.key.filter(k => k !== null).length; cnt.textContent = c + ' of ' + e.n + ' set'; cnt.className = 'pill ' + (c === e.n ? 'ok' : 'warn'); };
   const applyKey = () => {
-    const t = keyBox.value.toUpperCase().replace(/[^A-F\-.*]/g, ''); if (!t) return toast('Type the key letters first');
+    const t = keyBox.value.toUpperCase().replace(new RegExp('[^' + LET.slice(0, e.k) + '*]', 'g'), ''); if (!t) return toast('Type the key letters first');
     for (let q = 0; q < e.n; q++) { const ch = t[q]; if (ch === undefined) break; const j = LET.indexOf(ch); e.key[q] = ch === '*' ? -1 : (j >= 0 && j < e.k ? j : null); }
     saveExam(); drawGrid(); upd(); toast('Key applied');
   };
@@ -1051,16 +1291,18 @@ function setupView() {
   drawGrid(); upd();
 
   // print
-  let prev; try { prev = h('div', { class: 'preview', html: '' }); prev.innerHTML = OGCore.sheetSVG(layoutOf(e)); } catch (er) { prev = h('p', { class: 'warn' }, er.message); }
-  wrap.append(h('section', { class: 'card stack' }, h('h3', null, 'Answer sheet'),
-    h('p', { class: 'muted' }, 'Print this sheet for your students. It has 4 black corner squares that the camera uses to find the page.'), prev,
-    h('div', { class: 'row gap' }, h('button', { class: 'btn primary', onclick: () => printSheet(e) }, '🖨 Print / save PDF'), h('button', { class: 'btn', onclick: () => downloadPng(e) }, 'Download image (PNG)'))));
+  if (!e.tpl) {
+    let prev; try { prev = h('div', { class: 'preview', html: '' }); prev.innerHTML = OGCore.sheetSVG(layoutOf(e)); } catch (er) { prev = h('p', { class: 'warn' }, er.message); }
+    wrap.append(h('section', { class: 'card stack' }, h('h3', null, 'Print the OpenGrade sheet'),
+      h('p', { class: 'muted' }, 'Print this sheet for your students. It has 4 black corner squares that the camera uses to find the page.'), prev,
+      h('div', { class: 'row gap' }, h('button', { class: 'btn primary', onclick: () => printSheet(e) }, '🖨 Print / save PDF'), h('button', { class: 'btn', onclick: () => downloadPng(e) }, 'Download image (PNG)'))));
+  }
 
   // self test
   const res = h('div', { class: 'muted' });
   wrap.append(h('section', { class: 'card stack' }, h('h3', null, 'Check the scanner'),
     h('p', { class: 'muted' }, 'Runs the scanner on a made-up photo of a tilted sheet with known answers.'),
-    h('button', { class: 'btn', onclick: ev => { ev.target.disabled = true; res.textContent = 'Testing…'; setTimeout(() => { try { const r = OGCore.selfTest({ n: e.n, k: e.k, paper: e.paper }, 1 + (Date.now() % 997)); res.className = r.pass ? 'ok-text' : 'bad-text'; res.textContent = r.pass ? '✓ Passed: all ' + r.total + ' answers read correctly (' + r.ms + ' ms).' : '✗ Failed. ' + (r.msg || (r.wrong + ' wrong answers.')); } catch (er) { res.className = 'bad-text'; res.textContent = 'Error: ' + er.message; } ev.target.disabled = false; }, 60); } }, 'Run test'), res));
+    h('button', { class: 'btn', onclick: ev => { ev.target.disabled = true; res.textContent = 'Testing…'; setTimeout(async () => { try { const r = e.tpl ? await selfTestImported(e) : OGCore.selfTest({ n: e.n, k: e.k, paper: e.paper }, 1 + (Date.now() % 997)); res.className = r.pass ? 'ok-text' : 'bad-text'; res.textContent = r.pass ? '✓ Passed: all ' + r.total + ' answers read correctly (' + r.ms + ' ms).' : '✗ Failed. ' + (r.msg || (r.wrong + ' wrong answers.')); } catch (er) { res.className = 'bad-text'; res.textContent = 'Error: ' + er.message; } ev.target.disabled = false; }, 60); } }, 'Run test'), res));
 
   wrap.append(h('section', { class: 'card stack' }, h('h3', null, 'Delete exam'),
     h('button', { class: 'btn danger', onclick: async () => { if (!confirm('Delete “' + e.name + '” and all its scanned papers?')) return; await deleteExam(e.id); S.exam = null; render(); } }, 'Delete this exam')));
@@ -1164,9 +1406,10 @@ async function openPaperView(rid, opt) {
   }
   function crop(q) {
     if (!img || !img.naturalWidth) return null;
-    const Q = L.questions[q], x0 = Q.box.x - 1, w = Q.box.w + 2, y0 = Q.labelY - L.rowPitch * 0.62, hh = L.rowPitch * 1.24;
-    const c = h('canvas', { class: 'crop', width: Math.round(w * IMG_PPM), height: Math.round(hh * IMG_PPM) });
-    c.getContext('2d').drawImage(img, x0 * IMG_PPM, y0 * IMG_PPM, w * IMG_PPM, hh * IMG_PPM, 0, 0, c.width, c.height); return c;
+    const ppm = L.imgPpm || IMG_PPM, pad = L.tpl ? L.r * 0.15 : 1;
+    const Q = L.questions[q], x0 = Q.box.x - pad, w = Q.box.w + 2 * pad, y0 = Q.labelY - L.rowPitch * 0.62, hh = L.rowPitch * 1.24;
+    const c = h('canvas', { class: 'crop', width: Math.max(8, Math.round(w * ppm)), height: Math.max(8, Math.round(hh * ppm)) });
+    c.getContext('2d').drawImage(img, x0 * ppm, y0 * ppm, w * ppm, hh * ppm, 0, 0, c.width, c.height); return c;
   }
   function card(q) {
     const d = p.cls[q], r = qResult(e, p, q), res = p.res && p.res[q], key = e.key[q];
@@ -1204,6 +1447,160 @@ async function openPaperView(rid, opt) {
   ov.append(head, body, foot); document.body.append(ov); document.body.classList.add('noscroll'); drawAll();
 }
 
+/* ===================== OpenGrade app — part M: import & map any sheet (ZipGrade etc.) ===================== */
+const TPL = { index: [] };
+async function loadTplIndex() { TPL.index = (await store.get('tplIndex')) || []; }
+async function saveTemplateRecord(t, blob) {
+  await store.set('tpl:' + t.id, t); if (blob) await store.set('tplimg:' + t.id, blob);
+  const it = { id: t.id, name: t.name, n: t.n, k: t.k, thumb: t.thumb, updated: Date.now() }, i = TPL.index.findIndex(x => x.id === t.id);
+  if (i >= 0) TPL.index[i] = it; else TPL.index.unshift(it);
+  await store.set('tplIndex', TPL.index);
+}
+async function deleteTemplateRecord(id) { await store.del('tpl:' + id); await store.del('tplimg:' + id); TPL.index = TPL.index.filter(x => x.id !== id); await store.set('tplIndex', TPL.index); }
+function applyTemplateToExam(t) {
+  const e = S.exam; e.tpl = JSON.parse(JSON.stringify(t)); e.n = t.n; e.k = t.k; e.paper = 'A4';
+  e.key = Array.from({ length: t.n }, (_, i) => (e.key[i] !== undefined && e.key[i] !== null && e.key[i] < t.k ? e.key[i] : (e.key[i] === -1 ? -1 : null)));
+  saveExam(true);
+}
+
+/* ---------- getting a picture of the blank sheet (PDF, PNG, JPG) ---------- */
+function loadScript(src) { return new Promise((ok, no) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => no(new Error('Could not load the PDF reader. Are you online?')); document.head.append(s); }); }
+async function pdfToCanvas(file) {
+  const base = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  if (!window.pdfjsLib) await loadScript(base + 'pdf.min.js');
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = base + 'pdf.worker.min.js';
+  const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise, page = await pdf.getPage(1);
+  const v1 = page.getViewport({ scale: 1 }), vp = page.getViewport({ scale: 2000 / Math.max(v1.width, v1.height) });
+  const c = document.createElement('canvas'); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+  const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+  await page.render({ canvasContext: x, viewport: vp }).promise; return c;
+}
+async function fileToCanvas(file) {
+  if (/\.pdf$/i.test(file.name) || file.type === 'application/pdf') return pdfToCanvas(file);
+  let bmp; try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }); } catch (e) { bmp = await createImageBitmap(file); }
+  const sc = Math.min(1, 2200 / Math.max(bmp.width, bmp.height)), c = document.createElement('canvas'); c.width = Math.round(bmp.width * sc); c.height = Math.round(bmp.height * sc);
+  const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(bmp, 0, 0, c.width, c.height); if (bmp.close) bmp.close(); return c;
+}
+function canvasToGray(c) { const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; return OGCore.toGray(d, c.width * c.height); }
+function makeThumb(c, wpx) { const t = document.createElement('canvas'), s = wpx / c.width; t.width = wpx; t.height = Math.round(c.height * s); t.getContext('2d').drawImage(c, 0, 0, t.width, t.height); return t.toDataURL('image/jpeg', 0.7); }
+
+/* ---------- the import screen ---------- */
+function openMapper(opt) {
+  opt = opt || {};
+  const M = { canvas: null, gray: null, w: 0, h: 0, det: null, opts: { bubbleThr: 0.86, exclude: [], add: [], forceK: 0 }, hist: [], edits: {}, zoom: 1, mode: 'remove', name: opt.name || 'My sheet', existingId: opt.existingId || null };
+  const ov = h('div', { class: 'overlay', role: 'dialog' }), body = h('div', { class: 'ovbody' }), foot = h('div', { class: 'ovfoot' });
+  const close = () => { ov.remove(); document.body.classList.remove('noscroll'); };
+  ov.append(h('div', { class: 'ovhead' }, h('div', { class: 'row gap' }, h('button', { class: 'icon', 'aria-label': 'Close', onclick: close }, '✕'), h('b', { class: 'grow' }, 'Import an answer sheet'))), body, foot);
+  document.body.append(ov); document.body.classList.add('noscroll');
+
+  const pick = h('input', { type: 'file', accept: '.pdf,application/pdf,image/*', style: { display: 'none' }, onchange: async ev => { const f = ev.target.files[0]; ev.target.value = ''; if (f) await loadFile(f); } });
+  function stepFile(msg) {
+    body.replaceChildren(h('div', { class: 'card stack' },
+      h('h3', null, 'Pick a picture of the BLANK sheet'),
+      h('p', { class: 'muted' }, 'Use the PDF you print from ZipGrade, or a straight PNG / JPG of the empty sheet. The app will find the black squares and all the bubbles for you, then you can check and fix.'),
+      h('button', { class: 'btn primary big', onclick: () => pick.click() }, '📄 Choose PDF or image'), pick,
+      msg ? h('div', { class: 'warn' }, msg) : null,
+      h('ul', { class: 'muted small' }, h('li', null, 'All black corner squares and every bubble must be visible.'), h('li', null, 'A straight screenshot or PDF works best. A tilted phone photo is not recommended.'), h('li', null, 'PDF needs internet once, to load the PDF reader.'))));
+    foot.replaceChildren();
+  }
+  async function loadFile(f) {
+    body.replaceChildren(h('p', { class: 'center muted' }, 'Reading the file…'));
+    try { M.canvas = await fileToCanvas(f); } catch (er) { return stepFile((/pdf/i.test(f.name) ? 'Could not read this PDF. ' : 'Could not read this image. ') + (er.message || '') + ' You can also take a screenshot of the PDF and import the screenshot.'); }
+    M.w = M.canvas.width; M.h = M.canvas.height; M.gray = canvasToGray(M.canvas); M.sl = undefined; M.focused = false; M.zoom = 1;
+    if (!opt.name) M.name = f.name.replace(/\.[^.]+$/, '').slice(0, 40) || 'My sheet';
+    runDetect();
+  }
+  function blockKey(b) { return Math.round(b.x0 / 12) + ',' + Math.round(b.y0 / 12); }
+  function renumber() { let run = 1; for (const b of M.det.blocks.slice().sort((a, b) => a.start - b.start)) { if (b.include) { b.start = run; run += b.rows.length; } } }
+  function runDetect() {
+    const det = OGCore.detectTemplate(M.gray, M.w, M.h, M.opts); M.det = det;
+    if (det.ok) { for (const b of det.blocks) { const e = M.edits[blockKey(b)]; if (e) { b.include = e.include && b.k === det.k; if (e.start) b.start = e.start; } } }
+    stepMap();
+  }
+  function order() { return M.det.blocks.filter(b => b.include && b.k === M.det.k).sort((a, b) => a.start - b.start); }
+  function totals() { const inc = order(); return { n: inc.reduce((a, b) => a + b.rows.length, 0), blocks: inc.length }; }
+
+  let cv = null, wrap = null;
+  function draw() {
+    if (!cv || !M.det) return; const x = cv.getContext('2d'); x.drawImage(M.canvas, 0, 0); const det = M.det; if (!det.ok) return;
+    const lw = Math.max(2, M.w / 420), d = det.d;
+    x.lineWidth = lw * 1.4; x.strokeStyle = '#2b7fff'; det.markers.forEach(m => x.strokeRect(m.cx - m.s / 2 - 3, m.cy - m.s / 2 - 3, m.s + 6, m.s + 6));
+    x.fillStyle = '#2b7fff'; det.anchors.forEach(i => { const m = det.markers[i]; x.beginPath(); x.arc(m.cx, m.cy, m.s * 0.16, 0, 7); x.fill(); });
+    const num = new Map(); let run = 1; for (const b of order()) { num.set(b, run); run += b.rows.length; }
+    for (const b of det.blocks) {
+      const inc = num.has(b); x.strokeStyle = inc ? '#12a36a' : '#8a8a8a'; x.lineWidth = lw;
+      x.strokeRect(b.x0 - 5, b.y0 - 5, b.x1 - b.x0 + 10, b.y1 - b.y0 + 10);
+      for (const c of b.cells) { x.beginPath(); x.arc(c.x, c.y, d / 2 + 1, 0, 7); x.setLineDash(c.inferred ? [6, 5] : []); x.strokeStyle = c.inferred ? '#ff8a00' : (inc ? '#12a36a' : '#8a8a8a'); x.lineWidth = lw * 1.2; x.stroke(); x.setLineDash([]); }
+      if (inc) { x.font = 'bold ' + Math.round(Math.max(d * 0.42, M.w / 80)) + 'px Arial'; x.textAlign = 'right'; x.textBaseline = 'middle'; for (let r = 0; r < b.rows.length; r++) { const t = '' + (num.get(b) + r), px = b.cols[0] - d * 0.58, py = b.rows[r]; x.lineWidth = 4; x.strokeStyle = '#fff'; x.strokeText(t, px, py); x.fillStyle = '#0b5fd0'; x.fillText(t, px, py); } }
+    }
+    x.fillStyle = '#d23c3c'; (M.opts.add || []).forEach(p => { x.beginPath(); x.arc(p.x, p.y, 4, 0, 7); x.fill(); });
+  }
+  function onTap(ev) {
+    const r = cv.getBoundingClientRect(), px = (ev.clientX - r.left) * cv.width / r.width, py = (ev.clientY - r.top) * cv.height / r.height, d = M.det.d;
+    if (M.mode === 'remove') {
+      let hit = null, bd = 0.5 * d; for (const b of M.det.blocks) for (const c of b.cells) { if (c.inferred) continue; const dd = Math.hypot(c.x - px, c.y - py); if (dd < bd) { bd = dd; hit = c; } }
+      if (!hit) return toast('Tap on a green or grey circle to remove it');
+      M.opts.exclude.push({ x: hit.x, y: hit.y }); M.hist.push('ex');
+    } else { M.opts.add.push({ x: px, y: py }); M.hist.push('add'); }
+    runDetect();
+  }
+  function stepMap() {
+    const det = M.det; body.replaceChildren(); foot.replaceChildren();
+    if (M.sl === undefined && det.ok) { const fw = (Math.max(...det.blocks.map(b => b.x1)) - Math.min(...det.blocks.map(b => b.x0))) / M.w; M.zoom = Math.min(4, Math.max(1, 0.78 / Math.max(fw, 0.1))); }
+    cv = h('canvas', { class: 'mapcv', width: M.w, height: M.h, onclick: onTap }); cv.style.width = (100 * M.zoom) + '%';
+    wrap = h('div', { class: 'mapwrap' }, cv); wrap.addEventListener('scroll', () => { M.sl = wrap.scrollLeft; M.st = wrap.scrollTop; });
+    const range = h('input', { type: 'range', min: 0.6, max: 0.97, step: 0.01, value: M.opts.bubbleThr, onchange: ev => { M.opts.bubbleThr = +ev.target.value; runDetect(); } });
+    const kSel = h('select', { onchange: ev => { M.opts.forceK = +ev.target.value; runDetect(); } }, [[0, 'Automatic']].concat([2, 3, 4, 5, 6, 7, 8].map(v => [v, v + ' choices'])).map(([v, l]) => h('option', { value: v, selected: M.opts.forceK === v }, l)));
+    const tools = h('div', { class: 'card stack' },
+      h('div', { class: 'row gap wrap' }, h('button', { class: 'btn sm', onclick: () => { M.zoom = Math.max(1, M.zoom - 0.5); cv.style.width = (100 * M.zoom) + '%'; } }, '− Zoom'), h('button', { class: 'btn sm', onclick: () => { M.zoom = Math.min(4, M.zoom + 0.5); cv.style.width = (100 * M.zoom) + '%'; } }, '+ Zoom'),
+        h('button', { class: 'btn sm', onclick: () => stepFile() }, 'Other file')),
+      h('div', { class: 'seg' }, h('button', { class: M.mode === 'remove' ? 'on' : '', onclick: () => { M.mode = 'remove'; stepMap(); } }, 'Tap = remove a circle'), h('button', { class: M.mode === 'add' ? 'on' : '', onclick: () => { M.mode = 'add'; stepMap(); } }, 'Tap = add a circle')),
+      h('div', { class: 'row gap wrap' }, h('button', { class: 'btn sm', disabled: !M.hist.length, onclick: () => { const a = M.hist.pop(); if (a === 'ex') M.opts.exclude.pop(); else M.opts.add.pop(); runDetect(); } }, '↶ Undo fix'),
+        h('button', { class: 'btn sm', disabled: !M.hist.length, onclick: () => { M.opts.exclude = []; M.opts.add = []; M.hist = []; runDetect(); } }, 'Reset fixes')),
+      field('Circle sensitivity (if circles are missed, move it right)', range), field('Choices per question', kSel));
+    if (!det.ok) {
+      const msg = { squares: 'I found only ' + det.found + ' black square(s). I need at least 4 (the sheet’s corner markers).', bubbles: 'I could not find enough bubbles (' + (det.found || 0) + '). Try the circle sensitivity slider.', blocks: 'I found bubbles but could not group them into questions.' }[det.reason] || 'Detection failed.';
+      body.append(h('div', { class: 'warn' }, msg), wrap, tools); draw(); return;
+    }
+    const tot = totals(), L = LET.slice(0, det.k), tooMany = det.k > LET.length;
+    const status = h('div', { class: 'card' }, h('b', null, tot.n ? '✓ ' + tot.n + ' questions · ' + det.k + ' choices (' + L[0] + '–' + L[L.length - 1] + ')' : '⚠ No questions selected'),
+      h('div', { class: 'muted small' }, det.markers.length + ' corner squares found · ' + det.nBubbles + ' bubbles found · ' + det.blocks.length + ' block(s)'),
+      tooMany ? h('div', { class: 'warn-text small' }, 'This app supports up to ' + LET.length + ' choices per question. Try “Choices per question”.') : null,
+      det.warnings.map(w => h('div', { class: 'warn-text small' }, w)),
+      h('div', { class: 'muted small' }, 'Green = used, grey = not used, orange dashed = filled in by the app, blue = corner squares. The blue numbers are the question numbers. Check that each one sits on the right row.'));
+    const blocks = h('div', { class: 'stack' }, det.blocks.map(b => {
+      const bad = b.k !== det.k, inc = h('input', { type: 'checkbox', checked: b.include && !bad, disabled: bad, onchange: ev => { b.include = ev.target.checked; M.edits[blockKey(b)] = { include: b.include, start: b.start }; renumber(); stepMap(); } });
+      const st = h('input', { type: 'number', min: 1, value: b.start || '', disabled: !b.include, style: { width: '5em' }, inputmode: 'numeric', onchange: ev => { b.start = Math.max(1, +ev.target.value || 1); M.edits[blockKey(b)] = { include: b.include, start: b.start }; stepMap(); } });
+      return h('div', { class: 'card row gap wrap' }, h('label', { class: 'switch' }, inc, h('b', null, 'Block ' + (b.id + 1))), h('span', { class: 'muted grow' }, b.rows.length + ' rows × ' + b.k + ' columns' + (b.suspect ? ' · some circles filled in' : '') + (bad ? ' · different number of columns' : '')), h('label', { class: 'switch' }, 'starts at Q', st));
+    }));
+    const nameIn = h('input', { type: 'text', dir: 'auto', value: M.name, onchange: ev => { M.name = ev.target.value.trim() || 'My sheet'; } });
+    body.append(status, wrap, tools, h('h4', null, 'Blocks of bubbles'), blocks, field('Name of this sheet', nameIn));
+    foot.append(h('button', { class: 'btn', onclick: close }, 'Cancel'), h('span', { class: 'grow' }), h('button', { class: 'btn primary', disabled: !tot.n || tooMany, onclick: save }, 'Save this sheet'));
+    draw();
+    requestAnimationFrame(() => {
+      if (M.sl !== undefined && M.st !== undefined && M.focused) { wrap.scrollLeft = M.sl; wrap.scrollTop = M.st; return; }
+      const bx0 = Math.min(...det.blocks.map(b => b.x0)), bx1 = Math.max(...det.blocks.map(b => b.x1)), by0 = Math.min(...det.blocks.map(b => b.y0)), by1 = Math.max(...det.blocks.map(b => b.y1)), f = cv.clientWidth / M.w;
+      wrap.scrollLeft = Math.max(0, ((bx0 + bx1) / 2) * f - wrap.clientWidth / 2); wrap.scrollTop = Math.max(0, ((by0 + by1) / 2) * f - wrap.clientHeight / 2); M.focused = true;
+    });
+  }
+  async function save() {
+    const bt = OGCore.buildTemplate(M.det, M.gray, { name: M.name, k: M.det.k });
+    if (!bt.ok) return toast('Turn on at least one block of bubbles');
+    const t = bt.template; t.id = M.existingId || uid(); t.thumb = makeThumb(M.canvas, 220);
+    const blob = await new Promise(ok => M.canvas.toBlob(ok, 'image/jpeg', 0.88));
+    await saveTemplateRecord(t, blob); close(); if (opt.onSave) opt.onSave(t);
+  }
+  if (opt.canvas) { M.canvas = opt.canvas; M.w = M.canvas.width; M.h = M.canvas.height; M.gray = canvasToGray(M.canvas); runDetect(); } else stepFile();
+}
+
+/* ---------- test an imported sheet with a made-up photo ---------- */
+async function selfTestImported(e) {
+  const blob = await store.get('tplimg:' + e.tpl.id); if (!blob) return { pass: false, msg: 'The saved picture of this sheet is missing. Import the sheet again.' };
+  const bmp = await createImageBitmap(blob), c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height; c.getContext('2d').drawImage(bmp, 0, 0);
+  const g = canvasToGray(c); if (c.width !== e.tpl.w || c.height !== e.tpl.h) return { pass: false, msg: 'The saved picture does not match the sheet map. Import the sheet again.' };
+  return OGCore.selfTestTemplate(e.tpl, g, c.width, c.height, 1 + (Date.now() % 997));
+}
+
 /* ===================== OpenGrade app — part C: camera scanner ===================== */
 const sc = { running: false, stream: null, video: null, ov: null, octx: null, cap: null, cctx: null, engine: null, ready: false, inflight: false, id: 0, lastSend: 0,
   frames: [], waitNext: false, acceptedSig: null, lostSince: 0, busy: false, paused: false, recent: [], pending: {}, warpResolve: null, raf: 0, state: '', lastRes: null, cw: 0, ch: 0, ui: {}, torch: false };
@@ -1212,7 +1609,7 @@ const sc = { running: false, stream: null, video: null, ov: null, octx: null, ca
 function makeEngine(OG, post) {
   let L = null, last = null;
   return function (m) {
-    if (m.t === 'init') { L = OG.makeLayout(m.cfg); OG.TH.mark = m.th.mark; OG.TH.faint = m.th.faint; last = null; post({ t: 'ready' }); }
+    if (m.t === 'init') { L = m.tpl ? OG.layoutFromTemplate(m.tpl) : OG.makeLayout(m.cfg); OG.TH.mark = m.th.mark; OG.TH.faint = m.th.faint; last = null; post({ t: 'ready' }); }
     else if (m.t === 'frame') {
       const t0 = Date.now();
       try {
@@ -1241,7 +1638,7 @@ function createEngine() {
   } catch (er) { return mainEngine(); }
 }
 function switchToMain() { try { sc.engine && sc.engine.stop(); } catch (e) { } sc.engine = mainEngine(); sendInit(); }
-function sendInit() { const e = S.exam; sc.ready = false; sc.engine.send({ t: 'init', cfg: { n: e.n, k: e.k, paper: e.paper }, th: SENS[e.sens] }); }
+function sendInit() { const e = S.exam; sc.ready = false; sc.engine.send({ t: 'init', cfg: { n: e.n, k: e.k, paper: e.paper }, tpl: e.tpl || null, th: SENS[e.sens] }); }
 function startEngine() {
   const e = S.exam; OGCore.TH.mark = SENS[e.sens].mark; OGCore.TH.faint = SENS[e.sens].faint;
   sc.engine = createEngine(); sendInit();
@@ -1312,7 +1709,7 @@ async function enterScan() {
   const e = S.exam; sc.frames = []; sc.waitNext = false; sc.acceptedSig = null; sc.lostSince = 0; sc.paused = false; sc.busy = false;
   sc.video = sc.ui.video; sc.ov = sc.ui.ov; sc.octx = sc.ov.getContext('2d');
   sc.cap = sc.cap || document.createElement('canvas'); sc.cctx = sc.cap.getContext('2d', { willReadFrequently: true });
-  try { OGCore.makeLayout({ n: e.n, k: e.k, paper: e.paper }); } catch (er) { setMsg('bad', er.message); return; }
+  try { layoutOf(e); } catch (er) { setMsg('bad', er.message); return; }
   if (!e.key.some(k => k !== null) && S.scanMode !== 'key') setMsg('warn', 'Tip: set the answer key first (Setup tab).');
   updateScanUI(); startEngine(); startCamera();
 }
@@ -1402,7 +1799,7 @@ function manualCapture() {
 
 /* ---------------------------------------------------------------- accepting a paper */
 async function requestWarp() {
-  return new Promise(res => { sc.warpResolve = res; sc.engine.send({ t: 'warp', ppm: IMG_PPM }); setTimeout(() => { if (sc.warpResolve === res) { sc.warpResolve = null; res(null); } }, 5000); });
+  return new Promise(res => { sc.warpResolve = res; sc.engine.send({ t: 'warp', ppm: layoutOf(S.exam).imgPpm || IMG_PPM }); setTimeout(() => { if (sc.warpResolve === res) { sc.warpResolve = null; res(null); } }, 5000); });
 }
 function warpBlob(w) {
   const c = document.createElement('canvas'); c.width = w.w; c.height = w.h; const x = c.getContext('2d'), id = x.createImageData(w.w, w.h), d = id.data, g = w.data;
@@ -1495,7 +1892,7 @@ function drawOverlay(m, cls, state) {
 
 /* ---------------------------------------------------------------- start */
 (async function init() {
-  try { await store.open(); await loadIndex(); } catch (e) { console.error(e); }
+  try { await store.open(); await loadIndex(); await loadTplIndex(); } catch (e) { console.error(e); }
   try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) { }
   render();
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { });
