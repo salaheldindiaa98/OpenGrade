@@ -1,0 +1,1506 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b7f6f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>OpenGrade — free bubble sheet grader</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--ink:#14202b;--mute:#5d6b78;--line:#dde3e9;--accent:#0b7f6f;--accent-ink:#fff;--ok:#12a36a;--warn:#c77700;--bad:#d23c3c;--chip:#eef2f5;--shadow:0 1px 2px rgba(20,32,43,.08)}
+@media (prefers-color-scheme:dark){:root{--bg:#10171d;--card:#18222b;--ink:#e8eef3;--mute:#93a2af;--line:#2a3743;--accent:#2fbfa9;--accent-ink:#06211c;--ok:#3ccb8f;--warn:#f0a63a;--bad:#ff7070;--chip:#223039;--shadow:none}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+body.noscroll{overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+.page{min-height:100vh;min-height:100dvh}.page.withnav{padding-bottom:72px}
+.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--card);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:8px;font-size:1.15rem}.logo{color:var(--accent);font-size:1.4rem}.sub{color:var(--mute);margin-left:auto;font-size:.85rem}
+.pad{padding:14px;max-width:760px;margin:0 auto}.stack{display:flex;flex-direction:column;gap:12px}
+.row{display:flex;align-items:center}.gap{gap:10px}.wrap{flex-wrap:wrap}.grow{flex:1;min-width:0}
+.ellipsis{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:var(--shadow)}
+.card h3{margin:0}.card.row{gap:10px}.cards{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+h4{margin:6px 0 0;color:var(--mute);font-weight:600}
+.muted{color:var(--mute)}.small{font-size:.85rem}.center{text-align:center}.mono{font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.08em}
+.hidden{display:none!important}.click{cursor:pointer}.chev{color:var(--mute);font-size:1.4rem}
+.btn{border:1px solid var(--line);background:var(--card);padding:11px 16px;border-radius:12px;font-weight:600;cursor:pointer;min-height:46px}
+.btn:active{transform:scale(.98)}.btn[disabled]{opacity:.45;pointer-events:none}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}.btn.big{width:100%;font-size:1.1rem;min-height:54px}
+.btn.danger{color:var(--bad);border-color:var(--bad)}.btn.sm{padding:7px 12px;min-height:38px;font-size:.92rem}
+.btn.good.sel{background:var(--ok);color:#fff;border-color:var(--ok)}.btn.bad.sel{background:var(--bad);color:#fff;border-color:var(--bad)}
+.icon{border:0;background:transparent;font-size:1.35rem;width:42px;height:42px;border-radius:10px;cursor:pointer}.icon.sm{width:34px;height:34px;font-size:1rem;color:var(--mute)}
+.field{display:flex;flex-direction:column;gap:4px}.field>span{font-weight:600;font-size:.92rem}
+input[type=text],input[type=number],input[type=search],select,textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);min-height:46px}
+textarea{resize:vertical}input:disabled,select:disabled{opacity:.55}
+.warn{background:rgba(199,119,0,.12);border:1px solid var(--warn);color:var(--ink);padding:10px 12px;border-radius:12px}
+.pill{display:inline-block;padding:2px 9px;border-radius:99px;background:var(--chip);font-size:.8rem;font-weight:600;white-space:nowrap}.pill.ok{background:rgba(18,163,106,.16);color:var(--ok)}.pill.warn{background:rgba(199,119,0,.16);color:var(--warn);border:0}
+.ok-text{color:var(--ok);font-weight:600}.bad-text{color:var(--bad);font-weight:600}.warn-text{color:var(--warn);font-weight:600}
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+.nav button{flex:1;border:0;background:transparent;padding:8px 2px 9px;display:flex;flex-direction:column;align-items:center;gap:1px;font-size:.78rem;color:var(--mute);position:relative;cursor:pointer}
+.nav button.on{color:var(--accent);font-weight:700}.ni{font-size:1.25rem}
+.badge{position:absolute;top:3px;left:calc(50% + 8px);background:var(--warn);color:#fff;border-radius:99px;font-size:.7rem;font-style:normal;padding:0 6px;min-width:18px;text-align:center;display:none}
+.keygrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px 14px}
+.krow{display:flex;align-items:center;gap:5px}.qn{width:2.2em;text-align:right;color:var(--mute);font-variant-numeric:tabular-nums;margin-right:2px}
+.chip{border:1px solid var(--line);background:var(--chip);border-radius:9px;min-width:38px;height:38px;font-weight:700;cursor:pointer;padding:0 6px}
+.chip.small{font-size:.75rem;font-weight:600;color:var(--mute)}.chip.sel{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.chip.big{min-width:54px;height:50px;font-size:1.1rem}.chip.marked{border:2px solid var(--ink)}.chip.iskey{box-shadow:inset 0 -4px 0 var(--ok)}
+.preview{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff;max-height:420px;display:flex;justify-content:center}.preview svg{max-height:420px;width:auto;height:auto;max-width:100%}
+.list{display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.srow,.rrow{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line);min-height:52px}.srow:last-child,.rrow:last-child{border-bottom:0}
+.srow.absent .sname,.rrow.dim{opacity:.5}.serial{min-width:2.3em;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}.sname{overflow:hidden;text-overflow:ellipsis}.score{font-variant-numeric:tabular-nums}
+.switch{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.85rem;color:var(--mute);white-space:nowrap}.switch.wide{font-size:1rem;color:var(--ink);white-space:normal;align-items:flex-start}
+.switch input{width:20px;height:20px;accent-color:var(--accent);flex:none}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;text-align:center;display:flex;flex-direction:column}.stat b{font-size:1.5rem}.stat span{color:var(--mute);font-size:.82rem}.stat.warn b{color:var(--warn)}
+.overlay{position:fixed;inset:0;z-index:20;background:var(--bg);display:flex;flex-direction:column}
+.ovhead{padding:10px 14px;background:var(--card);border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px}.ovbody{flex:1;overflow:auto;padding:12px 14px;display:flex;flex-direction:column;gap:12px;max-width:760px;width:100%;margin:0 auto}
+.ovfoot{padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line);display:flex;gap:10px;align-items:center}.bigscore{font-size:1.4rem}
+.seg{display:flex;background:var(--chip);border-radius:10px;padding:3px}.seg button{flex:1;border:0;background:transparent;border-radius:8px;padding:8px;font-weight:600;cursor:pointer;color:var(--mute)}.seg button.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+.qcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px}.qcard.flag{border-color:var(--warn);border-width:2px}
+.qno{font-size:1.2rem;min-width:2.6em}.chips{display:flex;gap:8px;flex-wrap:wrap}
+.tag{font-size:.78rem;font-weight:700;border-radius:8px;padding:2px 8px;background:var(--chip)}.t-blank{background:rgba(199,119,0,.18);color:var(--warn)}.t-multi{background:rgba(210,60,60,.16);color:var(--bad)}.t-unsure{background:rgba(199,119,0,.18);color:var(--warn)}.t-set{background:rgba(11,127,111,.15);color:var(--accent)}
+.crop{width:100%;max-width:440px;height:auto;border:1px solid var(--line);border-radius:8px;background:#fff;align-self:flex-start;image-rendering:auto}
+.camwrap{position:relative;width:100%;aspect-ratio:3/4;max-height:68vh;background:#000;border-radius:14px;overflow:hidden;margin:0 auto}
+.camwrap video,.ovcanvas{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}.camwrap.flash{outline:6px solid var(--ok);outline-offset:-6px}
+.cammsg{position:absolute;left:8px;right:8px;bottom:8px;padding:9px 12px;border-radius:10px;font-weight:600;font-size:.92rem;background:rgba(0,0,0,.66);color:#fff}
+.cammsg.ok{background:rgba(18,140,92,.92)}.cammsg.warn{background:rgba(190,110,0,.94)}.cammsg.bad{background:rgba(190,45,45,.94)}
+.keybanner{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+#toast{position:fixed;left:50%;bottom:90px;transform:translate(-50%,20px);background:#14202b;color:#fff;padding:11px 16px;border-radius:12px;max-width:92vw;opacity:0;pointer-events:none;transition:.22s;z-index:50;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.3)}#toast.show{opacity:1;transform:translate(-50%,0)}
+
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script id="coreScript">
+/* OpenGrade core engine — no dependencies.
+   Sheet layout, printable SVG, corner-marker detection, perspective mapping,
+   bubble reading, classification, and a synthetic-photo generator for self-tests. */
+const OGCore = (function () {
+'use strict';
+
+const LETTERS = 'ABCDEFGH';
+const TH = { mark: 0.30, faint: 0.14 };   // darkness thresholds (0..1)
+
+/* ------------------------------------------------------------------ layout */
+function pageSize(paper) { return paper === 'Letter' ? { w: 215.9, h: 279.4 } : { w: 210, h: 297 }; }
+
+function makeLayout(cfg) {
+  const n = +cfg.n, k = +cfg.k;
+  if (!(n >= 1 && n <= 100)) throw new Error('Questions must be between 1 and 100');
+  if (!(k >= 2 && k <= 6)) throw new Error('Choices must be between 2 and 6');
+  const paper = cfg.paper === 'Letter' ? 'Letter' : 'A4';
+  const P = pageSize(paper);
+  const MI = 12;                                   // marker centre inset from page edge (mm)
+  const markers = [                                // order: TL (big anchor), TR, BR, BL
+    { cx: MI, cy: MI, s: 11, anchor: true },
+    { cx: P.w - MI, cy: MI, s: 7 },
+    { cx: P.w - MI, cy: P.h - MI, s: 7 },
+    { cx: MI, cy: P.h - MI, s: 7 }
+  ];
+  const gridTop = 80, gridBottom = P.h - 24, topLabelH = 9;
+  const labelW = 8, gapMin = 5, availW = P.w - 28;
+  const availH = gridBottom - gridTop - topLabelH;
+  let cols, R, p;
+  for (const minPitch of [7, 6.4]) {
+    const maxRows = Math.floor(availH / minPitch);
+    cols = Math.ceil(n / maxRows); R = Math.ceil(n / cols);
+    p = Math.min(7, (availW - (cols - 1) * gapMin - cols * labelW) / (cols * k));
+    if (p >= 5.4) break;
+  }
+  if (p < 5.4) throw new Error('Too many questions or choices for one sheet');
+  const r = Math.min(2.5, (p - 1.4) / 2);
+  const rowPitch = Math.min(9, availH / R);
+  const colW = labelW + k * p;
+  const gap = cols > 1 ? Math.min(12, (availW - cols * colW) / (cols - 1)) : 0;
+  const startX = (P.w - (cols * colW + (cols - 1) * gap)) / 2;
+  const questions = [];
+  for (let q = 0; q < n; q++) {
+    const col = Math.floor(q / R), row = q % R;
+    const x0 = startX + col * (colW + gap);
+    const cy = gridTop + topLabelH + rowPitch * (row + 0.5);
+    const bubbles = [];
+    for (let j = 0; j < k; j++) bubbles.push({ cx: x0 + labelW + p * (j + 0.5), cy });
+    questions.push({ q, col, row, bubbles, labelX: x0 + labelW - 1.5, labelY: cy,
+      box: { x: x0, y: cy - rowPitch / 2, w: colW, h: rowPitch } });
+  }
+  return { n, k, paper, P, markers, r, rowPitch, colW, cols, R, p, gridTop, topLabelH, startX, gap, labelW,
+           questions, title: cfg.title || '', subtitle: cfg.subtitle || '' };
+}
+
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+function sheetSVG(L) {
+  const P = L.P, o = [];
+  const T = (x, y, size, txt, extra) => o.push(`<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" font-size="${size}" ${extra || ''}>${esc(txt)}</text>`);
+  const Ln = (x1, y1, x2, y2, sw) => o.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#000" stroke-width="${sw || 0.3}"/>`);
+  o.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${P.w} ${P.h}" width="${P.w}mm" height="${P.h}mm" font-family="Arial, Helvetica, sans-serif">`);
+  o.push(`<rect width="${P.w}" height="${P.h}" fill="#fff"/>`);
+  for (const m of L.markers) o.push(`<rect x="${(m.cx - m.s / 2).toFixed(2)}" y="${(m.cy - m.s / 2).toFixed(2)}" width="${m.s}" height="${m.s}" fill="#000"/>`);
+  T(P.w / 2, 28, 6.5, L.title || 'Answer Sheet', 'text-anchor="middle" font-weight="bold"');
+  if (L.subtitle) T(P.w / 2, 34.5, 3.6, L.subtitle, 'text-anchor="middle" fill="#444"');
+  T(20, 46, 3.8, 'Name:'); Ln(33, 46.6, P.w - 74, 46.6);
+  T(P.w - 68, 46, 3.8, 'Serial:'); Ln(P.w - 54, 46.6, P.w - 20, 46.6);
+  T(20, 58, 3.8, 'Date:'); Ln(32, 58.6, 90, 58.6);
+  o.push(`<rect x="${P.w - 60}" y="51" width="40" height="15" fill="none" stroke="#000" stroke-width="0.3"/>`);
+  T(P.w - 40, 55.6, 2.8, 'Score', 'text-anchor="middle" fill="#444"');
+  T(P.w - 36, 63.6, 4.2, '/ ' + L.n, 'text-anchor="middle"');
+  T(20, 72, 2.9, 'Fill each bubble completely with a dark pen or pencil. One answer per question. Do not write inside the grid.', 'fill="#444"');
+  const letters = LETTERS.slice(0, L.k);
+  for (let c = 0; c < L.cols; c++) {
+    const q0 = c * L.R; if (q0 >= L.n) break;
+    const first = L.questions[q0];
+    for (let j = 0; j < L.k; j++) T(first.bubbles[j].cx, L.gridTop + 5.2, 3.2, letters[j], 'text-anchor="middle"');
+  }
+  for (const Q of L.questions) {
+    T(Q.labelX, Q.labelY + 1.25, 3.5, String(Q.q + 1), 'text-anchor="end"');
+    for (const b of Q.bubbles) o.push(`<circle cx="${b.cx.toFixed(2)}" cy="${b.cy.toFixed(2)}" r="${L.r}" fill="none" stroke="#000" stroke-width="0.35"/>`);
+  }
+  T(P.w / 2, P.h - 7, 2.6, `OpenGrade  |  ${L.n} questions  |  ${L.k} choices  |  ${L.paper}`, 'text-anchor="middle" fill="#888"');
+  o.push('</svg>');
+  return o.join('');
+}
+
+/* ------------------------------------------------------------------ vision */
+function toGray(rgba, n) {
+  const g = new Uint8Array(n);
+  for (let i = 0, j = 0; i < n; i++, j += 4) g[i] = (rgba[j] * 77 + rgba[j + 1] * 150 + rgba[j + 2] * 29) >> 8;
+  return g;
+}
+
+function downscale(g, w, h, maxSide) {
+  const f = Math.max(1, Math.round(Math.max(w, h) / maxSide));
+  if (f === 1) return { g, w, h, f: 1 };
+  const nw = Math.floor(w / f), nh = Math.floor(h / f), o = new Uint8Array(nw * nh), a = f * f;
+  for (let y = 0; y < nh; y++) for (let x = 0; x < nw; x++) {
+    let s = 0;
+    for (let yy = 0; yy < f; yy++) { const idx = (y * f + yy) * w + x * f; for (let xx = 0; xx < f; xx++) s += g[idx + xx]; }
+    o[y * nw + x] = (s / a + 0.5) | 0;
+  }
+  return { g: o, w: nw, h: nh, f };
+}
+
+function adaptiveDark(g, w, h, half, C) {
+  const W1 = w + 1, I = new Uint32Array(W1 * (h + 1));
+  for (let y = 0; y < h; y++) {
+    let row = 0;
+    for (let x = 0; x < w; x++) { row += g[y * w + x]; I[(y + 1) * W1 + x + 1] = I[y * W1 + x + 1] + row; }
+  }
+  const out = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const y0 = Math.max(0, y - half), y1 = Math.min(h, y + half + 1);
+    for (let x = 0; x < w; x++) {
+      const x0 = Math.max(0, x - half), x1 = Math.min(w, x + half + 1);
+      const s = I[y1 * W1 + x1] - I[y0 * W1 + x1] - I[y1 * W1 + x0] + I[y0 * W1 + x0];
+      const cnt = (x1 - x0) * (y1 - y0);
+      if (g[y * w + x] * cnt < s - C * cnt) out[y * w + x] = 1;
+    }
+  }
+  return out;
+}
+
+function components(bin, w, h, minA, maxA) {
+  const vis = new Uint8Array(w * h), q = new Int32Array(w * h), out = [];
+  for (let s = 0; s < w * h; s++) {
+    if (!bin[s] || vis[s]) continue;
+    let head = 0, tail = 0, sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0, bx0 = w, bx1 = 0, by0 = h, by1 = 0;
+    q[tail++] = s; vis[s] = 1;
+    while (head < tail) {
+      const p = q[head++], y = (p / w) | 0, x = p - y * w;
+      sx += x; sy += y; sxx += x * x; syy += y * y; sxy += x * y;
+      if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y;
+      if (x > 0 && bin[p - 1] && !vis[p - 1]) { vis[p - 1] = 1; q[tail++] = p - 1; }
+      if (x < w - 1 && bin[p + 1] && !vis[p + 1]) { vis[p + 1] = 1; q[tail++] = p + 1; }
+      if (y > 0 && bin[p - w] && !vis[p - w]) { vis[p - w] = 1; q[tail++] = p - w; }
+      if (y < h - 1 && bin[p + w] && !vis[p + w]) { vis[p + w] = 1; q[tail++] = p + w; }
+    }
+    const A = tail;
+    if (A < minA || A > maxA) continue;
+    const cx = sx / A, cy = sy / A;
+    const mxx = sxx / A - cx * cx, myy = syy / A - cy * cy, mxy = sxy / A - cx * cy;
+    let md = 0;
+    for (let i = 0; i < tail; i++) {
+      const p = q[i], y = (p / w) | 0, x = p - y * w, dx = x - cx, dy = y - cy, d = dx * dx + dy * dy;
+      if (d > md) md = d;
+    }
+    const tr = mxx + myy, det = mxx * myy - mxy * mxy, disc = Math.sqrt(Math.max(0, tr * tr / 4 - det));
+    const l1 = tr / 2 + disc, l2 = tr / 2 - disc;
+    out.push({ cx, cy, area: A, bx0, bx1, by0, by1, ratio: (Math.sqrt(md) + 0.5) / Math.sqrt(A), elong: Math.sqrt(Math.max(0, l2) / Math.max(1e-9, l1)) });
+  }
+  return out;
+}
+
+function pickQuad(cands, L) {
+  const m = L.markers, ar = (m[1].cx - m[0].cx) / (m[3].cy - m[0].cy), src = m.map(q => [q.cx, q.cy]);
+  cands.sort((a, b) => b.area - a.area);
+  const c = cands.slice(0, 16);
+  const found = [];
+  for (let a = 0; a < c.length; a++) for (let b = a + 1; b < c.length; b++)
+  for (let d = b + 1; d < c.length; d++) for (let e = d + 1; e < c.length; e++) {
+    const four = [c[a], c[b], c[d], c[e]];
+    const gx = (four[0].cx + four[1].cx + four[2].cx + four[3].cx) / 4, gy = (four[0].cy + four[1].cy + four[2].cy + four[3].cy) / 4;
+    const ring = four.slice().sort((p, q) => Math.atan2(p.cy - gy, p.cx - gx) - Math.atan2(q.cy - gy, q.cx - gx));   // clockwise on screen
+    let sign = 0, ok = true;
+    for (let i = 0; i < 4; i++) {
+      const p0 = ring[i], p1 = ring[(i + 1) % 4], p2 = ring[(i + 2) % 4];
+      const cr = (p1.cx - p0.cx) * (p2.cy - p1.cy) - (p1.cy - p0.cy) * (p2.cx - p1.cx);
+      if (Math.abs(cr) < 1e-6) { ok = false; break; }
+      const sg = cr > 0 ? 1 : -1;
+      if (sign === 0) sign = sg; else if (sg !== sign) { ok = false; break; }
+    }
+    if (!ok) continue;
+    let area = 0;
+    for (let i = 0; i < 4; i++) { const p0 = ring[i], p1 = ring[(i + 1) % 4]; area += p0.cx * p1.cy - p1.cx * p0.cy; }
+    area = Math.abs(area) / 2;
+    const dist = (p, q) => Math.hypot(p.cx - q.cx, p.cy - q.cy);
+    for (let ai = 0; ai < 4; ai++) {              // try each corner as the big "anchor" (top-left of the sheet)
+      const pts = [ring[ai], ring[(ai + 1) % 4], ring[(ai + 2) % 4], ring[(ai + 3) % 4]];
+      const er = (dist(pts[0], pts[1]) + dist(pts[2], pts[3])) / (dist(pts[1], pts[2]) + dist(pts[3], pts[0]));
+      if (er < ar * 0.7 || er > ar * 1.4) continue;
+      const H = solveH(src, pts.map(p => [p.cx, p.cy]));
+      if (!H) continue;
+      let sum = 0;
+      for (let i = 0; i < 4; i++) {               // does each square look the size it should (perspective-aware)?
+        const p0 = applyH(H, m[i].cx, m[i].cy), px = applyH(H, m[i].cx + 1, m[i].cy), py = applyH(H, m[i].cx, m[i].cy + 1);
+        const scale = Math.sqrt(Math.abs((px[0] - p0[0]) * (py[1] - p0[1]) - (px[1] - p0[1]) * (py[0] - p0[0])));
+        const e = Math.log((Math.sqrt(pts[i].area) + 0.5) / (m[i].s * scale));
+        sum += e * e;
+      }
+      const err = Math.sqrt(sum / 4);
+      if (err > 0.3) continue;
+      found.push({ err, area, pts });
+    }
+  }
+  found.sort((p, q) => (p.err - q.err) || (q.area - p.area));
+  return found.slice(0, 6);
+}
+
+function isolated(bin, w, h, c) {       // a real corner square has clean white paper all around it
+  const size = Math.max(c.bx1 - c.bx0, c.by1 - c.by0) + 1, m = Math.max(2, Math.round(size * 0.35));
+  const x0 = Math.max(0, c.bx0 - m), x1 = Math.min(w - 1, c.bx1 + m), y0 = Math.max(0, c.by0 - m), y1 = Math.min(h - 1, c.by1 + m);
+  let dark = 0, tot = 0;
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    if (x >= c.bx0 && x <= c.bx1 && y >= c.by0 && y <= c.by1) continue;
+    tot++; if (bin[y * w + x]) dark++;
+  }
+  return tot > 0 && dark / tot < 0.10;
+}
+
+function findMarkers(g, w, h, L) {      // ranked list of possible corner sets (each: 4 points TL,TR,BR,BL)
+  const D = Math.max(w, h);
+  const half = Math.max(15, Math.round(0.06 * D));
+  const bin = adaptiveDark(g, w, h, half, 18);
+  const comps = components(bin, w, h, Math.pow(0.006 * D, 2), Math.pow(0.13 * D, 2))
+    .filter(c => c.ratio >= 0.63 && c.ratio <= 0.86 && c.elong >= 0.5 && isolated(bin, w, h, c));
+  if (comps.length < 4) return [];
+  return pickQuad(comps, L).map(q => q.pts.map(p => ({ x: p.cx, y: p.cy })));
+}
+
+function solveH(src, dst) {           // 4 point pairs -> homography h0..h7 (h8 = 1)
+  const A = [];
+  for (let i = 0; i < 4; i++) {
+    const x = src[i][0], y = src[i][1], u = dst[i][0], v = dst[i][1];
+    A.push([x, y, 1, 0, 0, 0, -u * x, -u * y, u]);
+    A.push([0, 0, 0, x, y, 1, -v * x, -v * y, v]);
+  }
+  for (let c = 0; c < 8; c++) {
+    let piv = c; for (let r = c + 1; r < 8; r++) if (Math.abs(A[r][c]) > Math.abs(A[piv][c])) piv = r;
+    if (Math.abs(A[piv][c]) < 1e-12) return null;
+    [A[c], A[piv]] = [A[piv], A[c]];
+    for (let r = 0; r < 8; r++) {
+      if (r === c) continue;
+      const f = A[r][c] / A[c][c];
+      for (let k = c; k < 9; k++) A[r][k] -= f * A[c][k];
+    }
+  }
+  return A.map((row, i) => row[8] / row[i]);
+}
+function applyH(H, x, y) { const w = H[6] * x + H[7] * y + 1; return [(H[0] * x + H[1] * y + H[2]) / w, (H[3] * x + H[4] * y + H[5]) / w]; }
+
+function bil(g, w, h, u, v) {
+  if (u < 0) u = 0; else if (u > w - 1.001) u = w - 1.001;
+  if (v < 0) v = 0; else if (v > h - 1.001) v = h - 1.001;
+  const x0 = u | 0, y0 = v | 0, fx = u - x0, fy = v - y0, i = y0 * w + x0;
+  return (g[i] * (1 - fx) + g[i + 1] * fx) * (1 - fy) + (g[i + w] * (1 - fx) + g[i + w + 1] * fx) * fy;
+}
+
+const PAT = [[0, 0]];
+for (let a = 0; a < 6; a++) PAT.push([0.25 * Math.cos(a * Math.PI / 3), 0.25 * Math.sin(a * Math.PI / 3)]);
+for (let a = 0; a < 12; a++) PAT.push([0.5 * Math.cos(a * Math.PI / 6 + 0.26), 0.5 * Math.sin(a * Math.PI / 6 + 0.26)]);
+
+function percentile(arr, f) { const s = arr.slice().sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(f * s.length))]; }
+
+// fills[q][j] = darkness 0..1 of each bubble, relative to the paper level around it
+function readFills(g, w, h, H, L) {
+  const n = L.n, k = L.k, r = L.r;
+  const mean = [];
+  for (let q = 0; q < n; q++) {
+    const row = [];
+    for (const b of L.questions[q].bubbles) {
+      let s = 0;
+      for (const pt of PAT) { const uv = applyH(H, b.cx + pt[0] * r, b.cy + pt[1] * r); s += bil(g, w, h, uv[0], uv[1]); }
+      row.push(s / PAT.length);
+    }
+    mean.push(row);
+  }
+  // paper level for each row: measured on the blank paper midway between rows (not from the bubbles themselves)
+  const fills = [], whites = [], half = L.rowPitch / 2;
+  for (let q = 0; q < n; q++) {
+    const Q = L.questions[q], vals = [];
+    for (const b of Q.bubbles) for (const dy of [-half, half]) {
+      const uv = applyH(H, b.cx, b.cy + dy); vals.push(bil(g, w, h, uv[0], uv[1]));
+    }
+    const W = percentile(vals, 0.5); whites.push(W);
+    fills.push(mean[q].map(m => Math.max(0, Math.min(1, (W - m) / Math.max(W, 1)))));
+  }
+  // alignment check: printed rings should be dark, just outside them should be white
+  let al = 0, cnt = 0;
+  const step = Math.max(1, Math.floor(n / 24));
+  for (let q = 0; q < n; q += step) {
+    const W = whites[q];
+    for (const b of L.questions[q].bubbles) {
+      let ringS = 0, outS = 0;
+      for (let a = 0; a < 12; a++) {
+        const cs = Math.cos(a * Math.PI / 6 + 0.13), sn = Math.sin(a * Math.PI / 6 + 0.13);
+        let mn = 255;
+        for (const dr of [-0.4, 0, 0.4]) { const uv = applyH(H, b.cx + (r + dr) * cs, b.cy + (r + dr) * sn); const v = bil(g, w, h, uv[0], uv[1]); if (v < mn) mn = v; }
+        ringS += mn;
+        const uo = applyH(H, b.cx + (r + 1.1) * cs, b.cy + (r + 1.1) * sn); outS += bil(g, w, h, uo[0], uo[1]);
+      }
+      al += (outS / 12 - ringS / 12) / Math.max(W, 1); cnt++;
+    }
+  }
+  return { fills, align: al / Math.max(1, cnt), white: percentile(whites, 0.5) };
+}
+
+function classifyRow(d) {
+  const idx = d.map((v, i) => i).sort((a, b) => d[b] - d[a]);
+  const marks = idx.filter(i => d[i] >= TH.mark);
+  const round = d.map(v => Math.round(v * 100) / 100);
+  if (marks.length >= 2) return { s: 'multi', m: marks, d: round };
+  if (marks.length === 1) {
+    const second = d[idx[1]];
+    return { s: second >= TH.faint ? 'unsure' : 'ok', m: marks, d: round };
+  }
+  if (d[idx[0]] >= TH.faint) return { s: 'unsure', m: [idx[0]], d: round };
+  return { s: 'blank', m: [], d: round };
+}
+function classifyAll(fills) { return fills.map(classifyRow); }
+
+const MIN_ALIGN = 0.22;
+// full pipeline on one grayscale frame. Returns {ok:false, reason} or {ok:true, pts, H, fills, align, white}
+function scanGray(gray, w, h, L, opts) {
+  opts = opts || {};
+  const ds = downscale(gray, w, h, opts.maxSide || 900);
+  const sets = findMarkers(ds.g, ds.w, ds.h, L);
+  if (!sets.length) return { ok: false, reason: 'markers' };
+  const src = L.markers.map(m => [m.cx, m.cy]);
+  let best = null;
+  for (const set of sets) {
+    const pts = set.map(p => ({ x: p.x * ds.f + (ds.f - 1) / 2, y: p.y * ds.f + (ds.f - 1) / 2 }));
+    const H = solveH(src, pts.map(p => [p.x, p.y]));
+    if (!H) continue;
+    const rd = readFills(gray, w, h, H, L);
+    if (!best || rd.align > best.align) best = { ok: true, pts, H, fills: rd.fills, align: rd.align, white: rd.white };
+    if (rd.align >= MIN_ALIGN) break;
+  }
+  if (!best) return { ok: false, reason: 'geometry' };
+  if (best.align < MIN_ALIGN) return { ok: false, reason: 'align', align: best.align };
+  return best;
+}
+
+// straightened grayscale picture of the sheet (for saving / review crops)
+function warpGray(gray, w, h, H, L, ppm) {
+  const W = Math.round(L.P.w * ppm), HH = Math.round(L.P.h * ppm), o = new Uint8ClampedArray(W * HH);
+  for (let y = 0; y < HH; y++) for (let x = 0; x < W; x++) {
+    const uv = applyH(H, x / ppm, y / ppm); o[y * W + x] = bil(gray, w, h, uv[0], uv[1]);
+  }
+  return { data: o, w: W, h: HH };
+}
+
+/* --------------------------------------------------------- synthetic photos */
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function gauss(rng) { let u = 0, v = 0; while (!u) u = rng(); while (!v) v = rng(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+
+// answers[q] = array of marked choice indexes ([] = blank). styles: per-mark {level, rr, ox, oy}
+function renderCanonical(L, answers, rng, ppm) {
+  const W = Math.round(L.P.w * ppm), H = Math.round(L.P.h * ppm), g = new Uint8Array(W * H).fill(236);
+  const blend = (x, y, cov, val) => { const i = y * W + x; g[i] = g[i] * (1 - cov) + val * cov; };
+  const rectFill = (x0, y0, x1, y1, val) => { for (let y = Math.max(0, Math.round(y0 * ppm)); y < Math.min(H, Math.round(y1 * ppm)); y++) for (let x = Math.max(0, Math.round(x0 * ppm)); x < Math.min(W, Math.round(x1 * ppm)); x++) g[y * W + x] = val; };
+  for (const m of L.markers) rectFill(m.cx - m.s / 2, m.cy - m.s / 2, m.cx + m.s / 2, m.cy + m.s / 2, 22);
+  // text-like clutter: title, handwriting, labels
+  rectFill(60, 23, L.P.w - 60, 28.5, 30);
+  for (let i = 0; i < 14; i++) { const x = 34 + rng() * 80, y = 42 + rng() * 4; rectFill(x, y, x + 1 + rng() * 6, y + 0.6 + rng() * 2.5, 60); }
+  rectFill(L.P.w - 52, 52, L.P.w - 30, 56, 70);
+  for (const Q of L.questions) rectFill(Q.labelX - 3.4, Q.labelY - 1.3, Q.labelX, Q.labelY + 1.3, 90);
+  for (const Q of L.questions) {
+    for (let j = 0; j < Q.bubbles.length; j++) {
+      const b = Q.bubbles[j], R0 = L.r;
+      const x0 = Math.floor((b.cx - R0 - 1) * ppm), x1 = Math.ceil((b.cx + R0 + 1) * ppm), y0 = Math.floor((b.cy - R0 - 1) * ppm), y1 = Math.ceil((b.cy + R0 + 1) * ppm);
+      const mk = (answers[Q.q] || []).indexOf(j) >= 0 ? answers.style(Q.q, j) : null;
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+        const px = (x + 0.5) / ppm, py = (y + 0.5) / ppm, d = Math.hypot(px - b.cx, py - b.cy);
+        const ring = Math.max(0, Math.min(1, 0.5 + (0.18 - Math.abs(d - R0)) * ppm));
+        if (ring > 0) blend(x, y, ring, 40);
+        if (mk) {
+          const dm = Math.hypot(px - b.cx - mk.ox, py - b.cy - mk.oy);
+          const cov = Math.max(0, Math.min(1, 0.5 + (R0 * mk.rr - dm) * ppm));
+          if (cov > 0) blend(x, y, cov, mk.level);
+        }
+      }
+    }
+  }
+  return { g, w: W, h: H, ppm };
+}
+
+function inv3(m) {
+  const [a, b, c, d, e, f, g, h, i] = m, A = e * i - f * h, B = -(d * i - f * g), C = d * h - e * g;
+  const det = a * A + b * B + c * C, id = 1 / det;
+  return [A * id, -(b * i - c * h) * id, (b * f - c * e) * id, B * id, (a * i - c * g) * id, -(a * f - c * d) * id, C * id, -(a * h - b * g) * id, (a * e - b * d) * id];
+}
+
+// cam: {w,h,scale(px/mm), rot(deg), ax, ay (perspective), cx, cy (centre px), noise, blur, gx, gy, k1, bg}
+function photo(canon, L, cam, rng) {
+  const w = cam.w, h = cam.h, th = cam.rot * Math.PI / 180, c = Math.cos(th), s = Math.sin(th), S = cam.scale;
+  const cu = cam.cx, cv = cam.cy, ax = cam.ax || 0, ay = cam.ay || 0;
+  const Hf = [S * c + cu * ax, -S * s + cu * ay, cu, S * s + cv * ax, S * c + cv * ay, cv, ax, ay, 1];
+  const Hi = inv3(Hf), k1 = cam.k1 || 0, rn = Math.hypot(w, h) / 2;
+  const out = new Float32Array(w * h), ppm = canon.ppm, offs = [[0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]];
+  const midx = L.P.w / 2, midy = L.P.h / 2;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let acc = 0;
+    for (const o of offs) {
+      let xd = (x + o[0] - w / 2) / rn, yd = (y + o[1] - h / 2) / rn, xu = xd, yu = yd;
+      if (k1) for (let it = 0; it < 4; it++) { const f = 1 + k1 * (xu * xu + yu * yu); xu = xd / f; yu = yd / f; }
+      const u = xu * rn + w / 2, v = yu * rn + h / 2;
+      const ww = Hi[6] * u + Hi[7] * v + Hi[8], X = (Hi[0] * u + Hi[1] * v + Hi[2]) / ww + midx, Y = (Hi[3] * u + Hi[4] * v + Hi[5]) / ww + midy;
+      if (X < 0 || Y < 0 || X >= L.P.w || Y >= L.P.h) acc += cam.bg || 70;
+      else acc += bil(canon.g, canon.w, canon.h, X * ppm - 0.5, Y * ppm - 0.5);
+    }
+    let val = acc / 4;
+    val *= 1 + (cam.gx || 0) * (x / w - 0.5) + (cam.gy || 0) * (y / h - 0.5);
+    out[y * w + x] = val;
+  }
+  let res = out;
+  if (cam.blur) {
+    res = new Float32Array(w * h);
+    for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+      let sum = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) sum += out[(y + dy) * w + x + dx];
+      res[y * w + x] = out[y * w + x] * (1 - cam.blur) + (sum / 9) * cam.blur;
+    }
+  }
+  const g = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) g[i] = Math.max(0, Math.min(255, res[i] + (cam.noise ? gauss(rng) * cam.noise : 0) + 0.5)) | 0;
+  return { g, w, h };
+}
+
+// build random answers (with some blanks / multi-marks / light pencil / smudges) for a test sheet
+function randomAnswers(L, rng, opt) {
+  opt = opt || {};
+  const ans = [], truth = [], styles = {};
+  for (let q = 0; q < L.n; q++) {
+    const r = rng(); let marks;
+    if (r < (opt.blank ?? 0.05)) marks = [];
+    else if (r < (opt.blank ?? 0.05) + (opt.multi ?? 0.06)) { const a = (rng() * L.k) | 0; let b = (rng() * L.k) | 0; while (b === a) b = (rng() * L.k) | 0; marks = [a, b]; }
+    else marks = [(rng() * L.k) | 0];
+    ans.push(marks);
+    const pencil = rng() < (opt.pencil ?? 0.25);
+    for (const j of marks) styles[q + ':' + j] = {
+      level: pencil ? 105 + rng() * 35 : 35 + rng() * 40,
+      rr: 0.78 + rng() * 0.2, ox: (rng() - 0.5) * 0.5, oy: (rng() - 0.5) * 0.5
+    };
+    truth.push(marks.length === 0 ? 'blank' : marks.length > 1 ? 'multi' : 'ok');
+  }
+  ans.style = (q, j) => styles[q + ':' + j];
+  return { ans, truth };
+}
+
+function randomCam(rng, kind, L, tweak) {
+  const land = kind === 'landscape', w = land ? 1440 : 1080, h = land ? 1080 : 1440;
+  const rotBase = land ? (rng() < 0.5 ? 90 : 270) : (rng() < 0.5 ? 0 : 180);
+  const frame = land ? w : h;
+  const cam = {
+    w, h, scale: (0.80 + rng() * 0.14) * frame / L.P.h, rot: rotBase + (rng() - 0.5) * 20, ax: (rng() - 0.5) * 0.0016, ay: (rng() - 0.5) * 0.0016,
+    cx: w / 2 + (rng() - 0.5) * 50, cy: h / 2 + (rng() - 0.5) * 50, noise: 3 + rng() * 4, blur: rng() * 0.5,
+    gx: (rng() - 0.5) * 0.35, gy: (rng() - 0.5) * 0.35, k1: (rng() - 0.5) * 0.02, bg: 55 + rng() * 40
+  };
+  if (tweak) tweak(cam, rng);
+  for (let it = 0; it < 40; it++) {        // shrink until every corner square is fully inside the picture (like a real, well-framed shot)
+    const th = cam.rot * Math.PI / 180, c = Math.cos(th), sn = Math.sin(th), S = cam.scale;
+    const Hf = [S * c + cam.cx * cam.ax, -S * sn + cam.cx * cam.ay, cam.cx, S * sn + cam.cy * cam.ax, S * c + cam.cy * cam.ay, cam.cy, cam.ax, cam.ay, 1];
+    let ok = true;
+    for (const m of L.markers) {
+      const X = m.cx - L.P.w / 2, Y = m.cy - L.P.h / 2, ww = Hf[6] * X + Hf[7] * Y + 1;
+      const u = (Hf[0] * X + Hf[1] * Y + Hf[2]) / ww, v = (Hf[3] * X + Hf[4] * Y + Hf[5]) / ww, mg = m.s / 2 * S + 25;
+      if (u < mg || v < mg || u > w - mg || v > h - mg) ok = false;
+    }
+    if (ok) break;
+    cam.scale *= 0.97;
+  }
+  return cam;
+}
+
+// compare a scan with the known truth
+function compare(L, ans, det) {
+  let correct = 0, flaggedOk = 0, wrong = 0, missedFlag = 0;
+  for (let q = 0; q < L.n; q++) {
+    const t = ans[q], d = det[q];
+    const expect = t.length === 0 ? 'blank' : t.length > 1 ? 'multi' : 'ok';
+    if (expect === 'ok') {
+      if (d.s === 'ok' && d.m[0] === t[0]) correct++;
+      else if (d.s === 'unsure') flaggedOk++;
+      else wrong++;
+    } else {
+      if (d.s === expect) correct++;
+      else if (d.s === 'unsure' || d.s === 'multi' || d.s === 'blank') flaggedOk++;
+      else { wrong++; missedFlag++; }
+    }
+  }
+  return { correct, flaggedOk, wrong, missedFlag };
+}
+
+// one-tap check used inside the app
+function selfTest(cfg, seed) {
+  const t0 = Date.now();
+  const rng = mulberry32(seed || 12345), L = makeLayout({ n: cfg.n || 50, k: cfg.k || 5, paper: cfg.paper || 'A4' });
+  const { ans } = randomAnswers(L, rng), canon = renderCanonical(L, ans, rng, 6);
+  const cam = randomCam(rng, 'portrait', L), ph = photo(canon, L, cam, rng);
+  const sc = scanGray(ph.g, ph.w, ph.h, L);
+  if (!sc.ok) return { pass: false, msg: 'Could not find the 4 corner squares in the test picture.', ms: Date.now() - t0 };
+  const det = classifyAll(sc.fills), cmp = compare(L, ans, det);
+  return { pass: cmp.wrong === 0 && sc.align > 0.1, total: L.n, ...cmp, align: sc.align, ms: Date.now() - t0 };
+}
+
+return { LETTERS, TH, pageSize, makeLayout, sheetSVG, toGray, downscale, findMarkers, adaptiveDark, components, pickQuad, solveH, applyH, readFills, classifyRow, classifyAll,
+         scanGray, warpGray, mulberry32, renderCanonical, photo, randomAnswers, randomCam, compare, selfTest };
+})();
+
+
+</script>
+<script>
+/* OpenGrade Excel helper — no dependencies.
+   write(sheets) -> Uint8Array of a real .xlsx file   (sheets: [{name, rows:[[cell,...],...], widths:[..]}])
+   read(arrayBuffer) -> Promise<rows[][]> of the first sheet
+   parseCSV(text) -> rows[][] */
+const OGXlsx = (function () {
+'use strict';
+const enc = new TextEncoder(), dec = new TextDecoder('utf-8');
+
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(b) { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+
+function zipStore(files) {                 // files: [{name, data:Uint8Array}]
+  const parts = [], central = []; let off = 0;
+  const u16 = v => [v & 255, (v >> 8) & 255], u32 = v => [v & 255, (v >> 8) & 255, (v >> 16) & 255, (v >>> 24) & 255];
+  for (const f of files) {
+    const name = enc.encode(f.name), crc = crc32(f.data), sz = f.data.length;
+    const lh = new Uint8Array([0x50, 0x4b, 3, 4, ...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0x21), ...u32(crc), ...u32(sz), ...u32(sz), ...u16(name.length), ...u16(0)]);
+    parts.push(lh, name, f.data);
+    central.push(new Uint8Array([0x50, 0x4b, 1, 2, ...u16(20), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0x21), ...u32(crc), ...u32(sz), ...u32(sz), ...u16(name.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(off)]), name);
+    off += lh.length + name.length + sz;
+  }
+  let csz = 0; for (const c of central) csz += c.length;
+  const end = new Uint8Array([0x50, 0x4b, 5, 6, 0, 0, 0, 0, ...u16(files.length), ...u16(files.length), ...u32(csz), ...u32(off), 0, 0]);
+  const all = [...parts, ...central, end]; let total = 0; for (const p of all) total += p.length;
+  const out = new Uint8Array(total); let o = 0; for (const p of all) { out.set(p, o); o += p.length; }
+  return out;
+}
+
+const X = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '');
+function colName(i) { let s = ''; i++; while (i > 0) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; }
+
+function sheetXml(sh) {
+  const rows = sh.rows || [], o = ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'];
+  o.push('<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/>');
+  if (sh.widths && sh.widths.length) { o.push('<cols>'); sh.widths.forEach((w, i) => o.push(`<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`)); o.push('</cols>'); }
+  o.push('<sheetData>');
+  rows.forEach((r, ri) => {
+    o.push(`<row r="${ri + 1}">`);
+    r.forEach((v, ci) => {
+      if (v === null || v === undefined || v === '') return;
+      const ref = colName(ci) + (ri + 1), st = ri === 0 ? ' s="1"' : '';
+      if (typeof v === 'number' && isFinite(v)) o.push(`<c r="${ref}"${st}><v>${v}</v></c>`);
+      else o.push(`<c r="${ref}"${st} t="inlineStr"><is><t xml:space="preserve">${X(v)}</t></is></c>`);
+    });
+    o.push('</row>');
+  });
+  o.push('</sheetData></worksheet>');
+  return o.join('');
+}
+
+function write(sheets) {
+  const f = [], names = sheets.map((s, i) => (String(s.name || 'Sheet' + (i + 1)).replace(/[\\\/?*\[\]:]/g, ' ').slice(0, 31)));
+  let ct = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>';
+  sheets.forEach((s, i) => ct += `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`);
+  ct += '</Types>';
+  f.push({ name: '[Content_Types].xml', data: enc.encode(ct) });
+  f.push({ name: '_rels/.rels', data: enc.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>') });
+  let wb = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>';
+  names.forEach((n, i) => wb += `<sheet name="${X(n)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`);
+  wb += '</sheets></workbook>';
+  f.push({ name: 'xl/workbook.xml', data: enc.encode(wb) });
+  let rel = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">';
+  sheets.forEach((s, i) => rel += `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`);
+  rel += `<Relationship Id="rId${sheets.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
+  f.push({ name: 'xl/_rels/workbook.xml.rels', data: enc.encode(rel) });
+  f.push({ name: 'xl/styles.xml', data: enc.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>') });
+  sheets.forEach((s, i) => f.push({ name: `xl/worksheets/sheet${i + 1}.xml`, data: enc.encode(sheetXml(s)) }));
+  return zipStore(f);
+}
+
+/* ---------------------------------------------------------------- reading */
+async function inflateRaw(bytes) {
+  const ds = new DecompressionStream('deflate-raw'), w = ds.writable.getWriter();
+  w.write(bytes); w.close();
+  return new Uint8Array(await new Response(ds.readable).arrayBuffer());
+}
+async function unzip(buf) {
+  const b = new Uint8Array(buf), dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  let e = -1; for (let i = b.length - 22; i >= Math.max(0, b.length - 65600); i--) if (dv.getUint32(i, true) === 0x06054b50) { e = i; break; }
+  if (e < 0) throw new Error('This is not an .xlsx file');
+  const n = dv.getUint16(e + 10, true); let p = dv.getUint32(e + 16, true); const out = {};
+  for (let i = 0; i < n; i++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) break;
+    const method = dv.getUint16(p + 10, true), csz = dv.getUint32(p + 20, true), nl = dv.getUint16(p + 28, true), el = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), lo = dv.getUint32(p + 42, true);
+    const name = dec.decode(b.subarray(p + 46, p + 46 + nl));
+    const lnl = dv.getUint16(lo + 26, true), lel = dv.getUint16(lo + 28, true), ds = lo + 30 + lnl + lel, raw = b.subarray(ds, ds + csz);
+    out[name] = { method, raw };
+    p += 46 + nl + el + cl;
+  }
+  out._get = async name => { const f = out[name]; if (!f) return null; return dec.decode(f.method === 0 ? f.raw : await inflateRaw(f.raw)); };
+  return out;
+}
+const unX = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&#x([0-9a-fA-F]+);/g, (m, h) => String.fromCodePoint(parseInt(h, 16))).replace(/&#(\d+);/g, (m, d) => String.fromCodePoint(+d)).replace(/&amp;/g, '&');
+function textOf(xml) { let s = ''; const re = /<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g; let m; while ((m = re.exec(xml))) s += m[1]; return unX(s); }
+function colIndex(ref) { const m = /^([A-Z]+)/.exec(ref); let n = 0; for (const ch of m[1]) n = n * 26 + ch.charCodeAt(0) - 64; return n - 1; }
+
+async function read(buf) {
+  const z = await unzip(buf);
+  const shared = [], ss = await z._get('xl/sharedStrings.xml');
+  if (ss) { const re = /<si>([\s\S]*?)<\/si>|<si\/>/g; let m; while ((m = re.exec(ss))) shared.push(m[1] ? textOf(m[1]) : ''); }
+  let sheetName = null;
+  const wbx = await z._get('xl/workbook.xml'), rels = await z._get('xl/_rels/workbook.xml.rels');
+  if (wbx && rels) {
+    const first = /<sheet\b[^>]*?r:id="([^"]+)"/.exec(wbx);
+    if (first) { const rm = new RegExp('<Relationship\\b[^>]*?Id="' + first[1] + '"[^>]*>').exec(rels); if (rm) { const t = /Target="([^"]+)"/.exec(rm[0]); if (t) sheetName = t[1].replace(/^\//, '').replace(/^(?!xl\/)/, 'xl/'); } }
+  }
+  if (!sheetName || !z[sheetName]) sheetName = Object.keys(z).filter(k => /^xl\/worksheets\/sheet\d+\.xml$/.test(k)).sort()[0];
+  const xml = await z._get(sheetName);
+  if (!xml) throw new Error('No sheet found in this file');
+  const rows = []; const rr = /<row\b[^>]*>([\s\S]*?)<\/row>/g; let rm2;
+  while ((rm2 = rr.exec(xml))) {
+    const row = [], cr = /<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g; let cm;
+    while ((cm = cr.exec(rm2[1]))) {
+      const at = cm[1], inner = cm[2] || '', ref = /\br="([A-Z]+\d+)"/.exec(at), t = /\bt="([^"]+)"/.exec(at);
+      const ci = ref ? colIndex(ref[1]) : row.length; let v = '';
+      if (t && t[1] === 'inlineStr') v = textOf(inner);
+      else { const vm = /<v>([\s\S]*?)<\/v>/.exec(inner); if (vm) { const raw = unX(vm[1]); if (t && t[1] === 's') v = shared[+raw] ?? ''; else if (t && (t[1] === 'str' || t[1] === 'e')) v = raw; else if (t && t[1] === 'b') v = raw === '1' ? 'TRUE' : 'FALSE'; else { const num = Number(raw); v = isNaN(num) ? raw : num; } } }
+      while (row.length < ci) row.push('');
+      row[ci] = v;
+    }
+    const rn = /\br="(\d+)"/.exec(rows.length >= 0 ? (/<row\b([^>]*)>/.exec(rm2[0]) || [0, ''])[1] : ''); const ridx = rn ? +rn[1] - 1 : rows.length;
+    while (rows.length < ridx) rows.push([]);
+    rows[ridx] = row;
+  }
+  return rows;
+}
+
+function parseCSV(text) {
+  text = text.replace(/^﻿/, '');
+  const first = text.split(/\r?\n/, 1)[0] || '', cnt = { ',': 0, ';': 0, '\t': 0 }; for (const ch of first) if (ch in cnt) cnt[ch]++;
+  const d = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0], rows = []; let row = [], cur = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
+    else if (c === '"') q = true;
+    else if (c === d) { row.push(cur); cur = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(cur); rows.push(row); row = []; cur = ''; }
+    else cur += c;
+  }
+  if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
+  return rows.filter(r => r.some(x => String(x).trim() !== ''));
+}
+
+return { write, read, parseCSV, crc32 };
+})();
+
+
+</script>
+<script>
+/* ===================== OpenGrade app — part A: helpers, storage, scoring, export ===================== */
+'use strict';
+const LET = OGCore.LETTERS;
+const $ = (s, r) => (r || document).querySelector(s);
+function h(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  if (attrs) for (const [k, v] of Object.entries(attrs)) {
+    if (v === null || v === undefined || v === false) continue;
+    if (k === 'class') e.className = v;
+    else if (k === 'style' && typeof v === 'object') Object.assign(e.style, v);
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else if (k === 'value') e.value = v;
+    else if (k === 'checked') e.checked = !!v;
+    else if (k === 'disabled') e.disabled = !!v;
+    else e.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of kids.flat(Infinity)) { if (c === null || c === undefined || c === false) continue; e.append(c && c.nodeType ? c : document.createTextNode(String(c))); }
+  return e;
+}
+const uid = () => Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const fmt = v => (Math.round(v * 100) / 100).toString();
+
+let toastTimer = null;
+function toast(msg, ms) {
+  let t = $('#toast'); if (!t) { t = h('div', { id: 'toast', role: 'status' }); document.body.append(t); }
+  t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), ms || 2400);
+}
+function beep(f, d) { try { const ac = beep.ac || (beep.ac = new (window.AudioContext || window.webkitAudioContext)()); const o = ac.createOscillator(), g = ac.createGain(); o.frequency.value = f || 880; g.gain.value = 0.12; o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + (d || 0.09)); } catch (e) { } }
+function buzz(p) { try { navigator.vibrate && navigator.vibrate(p); } catch (e) { } }
+function download(name, data, type) {
+  const blob = data instanceof Blob ? data : new Blob([data], { type: type || 'application/octet-stream' });
+  const a = h('a', { href: URL.createObjectURL(blob), download: name }); document.body.append(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+}
+function safeName(s) { return String(s || 'exam').replace(/[^\w؀-ۿ\- ]+/g, '').trim().replace(/\s+/g, '_').slice(0, 40) || 'exam'; }
+
+/* ---------- storage (IndexedDB; falls back to memory if the browser blocks it) ---------- */
+const store = (function () {
+  let db = null, ok = false; const mem = new Map();
+  const open = () => new Promise(res => {
+    try {
+      const rq = indexedDB.open('opengrade', 1);
+      rq.onupgradeneeded = () => rq.result.createObjectStore('kv');
+      rq.onsuccess = () => { db = rq.result; ok = true; res(); };
+      rq.onerror = () => res(); rq.onblocked = () => res();
+    } catch (e) { res(); }
+  });
+  const tx = (mode, fn) => new Promise((res, rej) => { const t = db.transaction('kv', mode), r = fn(t.objectStore('kv')); t.oncomplete = () => res(r && r.result); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error); });
+  return {
+    open, persistent: () => ok,
+    get: k => ok ? tx('readonly', s => s.get(k)) : Promise.resolve(mem.get(k)),
+    set: (k, v) => ok ? tx('readwrite', s => s.put(v, k)) : (mem.set(k, v), Promise.resolve()),
+    del: k => ok ? tx('readwrite', s => s.delete(k)) : (mem.delete(k), Promise.resolve())
+  };
+})();
+
+/* ---------- exam model ---------- */
+const SENS = { normal: { mark: 0.30, faint: 0.14 }, light: { mark: 0.20, faint: 0.10 } };
+const S = { index: [], exam: null, tab: 'setup', paperView: null };
+
+function newExam() {
+  const n = 20;
+  return { id: uid(), name: 'New exam', n, k: 5, paper: 'A4', title: '', sens: 'normal', points: 1, review: 'each', continuous: true,
+    key: Array(n).fill(null), roster: [], papers: {}, cursor: null, created: Date.now(), updated: Date.now() };
+}
+async function loadIndex() { S.index = (await store.get('index')) || []; }
+async function saveIndex() { await store.set('index', S.index); }
+let saveTimer = null;
+function saveExam(now) {
+  const e = S.exam; if (!e) return Promise.resolve();
+  e.updated = Date.now();
+  const it = S.index.find(x => x.id === e.id); if (it) { it.name = e.name; it.updated = e.updated; it.n = e.n; it.count = Object.keys(e.papers).length; } else S.index.unshift({ id: e.id, name: e.name, updated: e.updated, n: e.n, count: Object.keys(e.papers).length });
+  const doIt = () => Promise.all([store.set('exam:' + e.id, JSON.parse(JSON.stringify(e))), saveIndex()]).catch(err => toast('Could not save: ' + (err && err.message || err)));
+  if (now) return doIt();
+  clearTimeout(saveTimer); saveTimer = setTimeout(doIt, 250); return Promise.resolve();
+}
+async function openExam(id) { const e = await store.get('exam:' + id); if (!e) { toast('Exam not found'); return; } S.exam = e; S.tab = 'setup'; render(); }
+async function deleteExam(id) {
+  const e = await store.get('exam:' + id);
+  if (e) for (const rid of Object.keys(e.papers || {})) await store.del('img:' + id + ':' + rid);
+  await store.del('exam:' + id); S.index = S.index.filter(x => x.id !== id); await saveIndex();
+}
+const layoutOf = e => OGCore.makeLayout({ n: e.n, k: e.k, paper: e.paper, title: e.title || e.name, subtitle: '' });
+
+/* ---------- students ---------- */
+function sortRoster(list) {
+  if (list.every(s => s.serial !== '' && !isNaN(Number(s.serial)))) return list.slice().sort((a, b) => Number(a.serial) - Number(b.serial));
+  return list;
+}
+function parseRosterRows(rows) {
+  rows = rows.filter(r => r && r.some(c => String(c).trim() !== ''));
+  if (!rows.length) return [];
+  let sCol = 0, nCol = 1, start = 0;
+  const head = rows[0].map(c => String(c).trim().toLowerCase());
+  const isHead = head.some(c => /serial|seat|id|no\.?$|number|#|رقم|مسلسل|اسم|name/.test(c)) && rows[0].every(c => isNaN(Number(c)) || String(c).trim() === '');
+  if (isHead) {
+    start = 1;
+    const si = head.findIndex(c => /serial|seat|^id|^no\.?$|number|#|رقم|مسلسل|م$/.test(c)), ni = head.findIndex(c => /name|اسم|student/.test(c));
+    if (si >= 0) sCol = si; if (ni >= 0) nCol = ni; else if (si >= 0) nCol = si === 0 ? 1 : 0;
+  } else {
+    const c0 = rows.slice(0, 5).filter(r => String(r[0]).trim() !== '' && !isNaN(Number(r[0]))).length;
+    if (c0 < Math.min(rows.length, 5) / 2) { sCol = -1; nCol = 0; }       // no numeric first column: names only
+  }
+  const out = [];
+  for (let i = start; i < rows.length; i++) {
+    const r = rows[i], name = String(r[nCol] ?? '').trim(), serial = sCol >= 0 ? String(r[sCol] ?? '').trim() : '';
+    if (!name && !serial) continue;
+    out.push({ id: uid(), serial: serial || String(out.length + 1), name, absent: false });
+  }
+  return sortRoster(out);
+}
+function parseRosterText(text) {
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const rows = lines.map(l => { const m = /^(\d+)\s*[,;\t\-.:]\s*(.+)$/.exec(l) || /^(\d+)\s+(.+)$/.exec(l); return m ? [m[1], m[2]] : [l]; });
+  return parseRosterRows(rows);
+}
+const presentList = e => e.roster.filter(s => !s.absent);
+function nextStudent(e) {
+  if (e.cursor) { const s = e.roster.find(x => x.id === e.cursor); if (s) return s; }
+  return e.roster.find(s => !s.absent && !e.papers[s.id]) || null;
+}
+
+/* ---------- scoring ---------- */
+function qResult(e, p, q) {
+  const key = e.key[q], r = p.res && p.res[q], d = p.cls[q];
+  if (key === -1) return { state: 'bonus', correct: true, resolved: true };
+  const hasKey = key !== null && key !== undefined;
+  if (r && r.v) return { state: r.v === 'c' ? 'correct' : 'wrong', correct: r.v === 'c', resolved: true };
+  if (r && r.c !== null && r.c !== undefined) { const ok = hasKey && r.c === key; return { state: ok ? 'correct' : 'wrong', correct: ok, resolved: true }; }
+  if (d.s === 'ok') { const ok = hasKey && d.m[0] === key; return { state: hasKey ? (ok ? 'correct' : 'wrong') : 'nokey', correct: ok, resolved: false }; }
+  return { state: 'flag', correct: false, resolved: false, flagged: true };
+}
+function paperScore(e, p) {
+  let correct = 0, flags = [];
+  for (let q = 0; q < e.n; q++) { const r = qResult(e, p, q); if (r.correct) correct++; if (r.flagged) flags.push(q); }
+  return { correct, pts: correct * e.points, outOf: e.n * e.points, flags: p.reviewed ? [] : flags, allFlags: flags };
+}
+const flaggedPapers = e => e.roster.filter(s => e.papers[s.id] && paperScore(e, e.papers[s.id]).flags.length);
+
+function classifyDetected(c) {            // text for a detected answer
+  if (c.s === 'ok') return LET[c.m[0]];
+  if (c.s === 'blank') return '-';
+  if (c.s === 'multi') return c.m.map(i => LET[i]).sort().join('+');
+  return '?' + (c.m.length ? LET[c.m[0]] : '');
+}
+function finalLetter(e, p, q) {
+  const r = p.res && p.res[q];
+  if (r && r.c !== null && r.c !== undefined) return LET[r.c];
+  const d = p.cls[q]; return d.s === 'ok' ? LET[d.m[0]] : null;
+}
+
+/* ---------- export ---------- */
+function gradesRows(e) {
+  const rows = [['Serial', 'Name', 'Score', 'Out of', 'Percent', 'Status', 'Needs review']];
+  for (const s of e.roster) {
+    const p = e.papers[s.id], num = isNaN(Number(s.serial)) || s.serial === '' ? s.serial : Number(s.serial);
+    if (s.absent) rows.push([num, s.name, '', '', '', 'Absent', '']);
+    else if (!p) rows.push([num, s.name, '', '', '', 'Not scanned', '']);
+    else { const sc = paperScore(e, p); rows.push([num, s.name, sc.pts, sc.outOf, Math.round(sc.pts / sc.outOf * 1000) / 10, 'Scanned', sc.flags.length ? sc.flags.length + ' question(s)' : 'No']); }
+  }
+  return rows;
+}
+function answersRows(e) {
+  const head = ['Serial', 'Name']; for (let q = 0; q < e.n; q++) head.push('Q' + (q + 1));
+  const rows = [head, ['', 'Answer key', ...e.key.map(k => k === -1 ? 'BONUS' : (k === null ? '' : LET[k]))]];
+  for (const s of e.roster) {
+    const p = e.papers[s.id]; if (!p) continue;
+    const r = [isNaN(Number(s.serial)) || s.serial === '' ? s.serial : Number(s.serial), s.name];
+    for (let q = 0; q < e.n; q++) {
+      const res = p.res && p.res[q], base = classifyDetected(p.cls[q]);
+      if (res && res.c !== null && res.c !== undefined) r.push(LET[res.c] + '*');
+      else if (res && res.v) r.push(base + (res.v === 'c' ? ' (accepted)' : ' (rejected)'));
+      else r.push(base);
+    }
+    rows.push(r);
+  }
+  return rows;
+}
+function questionRows(e) {
+  const head = ['Question', 'Key', 'Correct %']; for (let j = 0; j < e.k; j++) head.push('Chose ' + LET[j]); head.push('No answer');
+  const rows = [head]; const papers = e.roster.map(s => e.papers[s.id]).filter(Boolean);
+  for (let q = 0; q < e.n; q++) {
+    let ok = 0; const cnt = Array(e.k).fill(0); let none = 0;
+    for (const p of papers) { if (qResult(e, p, q).correct) ok++; const L = finalLetter(e, p, q); if (L) cnt[LET.indexOf(L)]++; else none++; }
+    rows.push([q + 1, e.key[q] === -1 ? 'BONUS' : (e.key[q] === null ? '' : LET[e.key[q]]), papers.length ? Math.round(ok / papers.length * 1000) / 10 : '', ...cnt, none]);
+  }
+  return rows;
+}
+function exportXlsx(e) {
+  const g = gradesRows(e), a = answersRows(e), q = questionRows(e);
+  const bytes = OGXlsx.write([
+    { name: 'Grades', rows: g, widths: [9, 28, 9, 9, 10, 14, 16] },
+    { name: 'Answers', rows: a, widths: [9, 28, ...Array(e.n).fill(6)] },
+    { name: 'Questions', rows: q, widths: [10, 8, 11, ...Array(e.k + 1).fill(10)] }]);
+  download(safeName(e.name) + '_grades.xlsx', new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+}
+function exportCsv(e) {
+  const csv = gradesRows(e).map(r => r.map(c => { c = String(c ?? ''); return /[",\n;]/.test(c) ? '"' + c.replace(/"/g, '""') + '"' : c; }).join(',')).join('\r\n');
+  download(safeName(e.name) + '_grades.csv', new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
+}
+
+/* ---------- printing the sheet ---------- */
+function printSheet(e) {
+  const L = layoutOf(e), svg = OGCore.sheetSVG(L), P = L.P;
+  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safeName(e.name)} sheet</title><style>
+@page{size:${P.w}mm ${P.h}mm;margin:0}html,body{margin:0;background:#888}
+.bar{position:sticky;top:0;background:#222;color:#fff;padding:10px 14px;font:15px Arial;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.bar button{font:inherit;padding:8px 14px;border-radius:8px;border:0;background:#0a7;color:#fff}.pg{width:${P.w}mm;max-width:100%;margin:0 auto;background:#fff}.pg svg{display:block;width:100%;height:auto}
+@media print{.bar{display:none}html,body{background:#fff}.pg{width:${P.w}mm;max-width:none}}</style></head><body>
+<div class="bar"><button onclick="window.print()">Print / Save as PDF</button><span>Print at <b>100% size</b> (not &ldquo;fit to page&rdquo; if it shrinks the corners). Use plain white paper.</span></div>
+<div class="pg">${svg}</div></body></html>`;
+  const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+  const w = window.open(url, '_blank'); if (!w) { download(safeName(e.name) + '_sheet.html', new Blob([html], { type: 'text/html' })); toast('Pop-up blocked — the sheet was downloaded instead. Open it and print.'); }
+}
+async function downloadPng(e) {
+  const L = layoutOf(e), svg = OGCore.sheetSVG(L).replace('width="' + L.P.w + 'mm" height="' + L.P.h + 'mm"', 'width="' + Math.round(L.P.w / 25.4 * 300) + '" height="' + Math.round(L.P.h / 25.4 * 300) + '"');
+  const img = new Image(); const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+  await new Promise((ok, no) => { img.onload = ok; img.onerror = no; img.src = url; });
+  const c = document.createElement('canvas'); c.width = Math.round(L.P.w / 25.4 * 300); c.height = Math.round(L.P.h / 25.4 * 300);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+  c.toBlob(b => download(safeName(e.name) + '_sheet.png', b), 'image/png');
+}
+
+/* ===================== OpenGrade app — part B: screens ===================== */
+const IMG_PPM = 4;
+
+function render() {
+  leaveScan && leaveScan();
+  const root = $('#app'); root.replaceChildren();
+  root.append(S.exam ? examShell() : homeView());
+  if (S.exam) renderTab();
+}
+
+/* ---------------------------------------------------------------- home */
+function homeView() {
+  const list = S.index.slice().sort((a, b) => b.updated - a.updated);
+  return h('div', { class: 'page' },
+    h('header', { class: 'top' }, h('div', { class: 'brand' }, h('span', { class: 'logo' }, '◉'), h('b', null, 'OpenGrade')), h('span', { class: 'sub' }, 'Free bubble-sheet grader')),
+    h('main', { class: 'pad' },
+      h('button', { class: 'btn primary big', onclick: async () => { const e = newExam(); S.exam = e; S.tab = 'setup'; await saveExam(true); render(); } }, '+ New exam'),
+      list.length ? h('div', { class: 'cards' }, list.map(x => h('div', { class: 'card row click', onclick: () => openExam(x.id) },
+        h('div', { class: 'grow' }, h('b', { dir: 'auto' }, x.name), h('div', { class: 'muted' }, (x.n || '?') + ' questions · ' + (x.count || 0) + ' papers scanned')),
+        h('span', { class: 'chev' }, '›')))) : h('p', { class: 'muted center' }, 'No exams yet. Tap “New exam” to start.'),
+      !store.persistent() ? h('div', { class: 'warn' }, 'Your browser is blocking saved data. Exams will be lost when you close this page. Export your grades before leaving.') : null,
+      h('p', { class: 'muted small center' }, 'Everything stays on this phone. Nothing is uploaded.')));
+}
+
+/* ---------------------------------------------------------------- exam shell */
+function examShell() {
+  const e = S.exam;
+  return h('div', { class: 'page withnav' },
+    h('header', { class: 'top' },
+      h('button', { class: 'icon', 'aria-label': 'Back to exams', onclick: async () => { await saveExam(true); S.exam = null; render(); } }, '←'),
+      h('b', { class: 'grow ellipsis', dir: 'auto', id: 'examTitle' }, e.name)),
+    h('main', { id: 'content' }),
+    h('nav', { class: 'nav', id: 'nav' }, [['setup', '⚙', 'Setup'], ['students', '👥', 'Students'], ['scan', '📷', 'Scan'], ['results', '📊', 'Results']].map(([t, ic, lb]) =>
+      h('button', { class: S.tab === t ? 'on' : '', 'data-tab': t, onclick: () => setTab(t) }, h('span', { class: 'ni' }, ic), h('span', null, lb), t === 'results' ? h('i', { class: 'badge', id: 'flagBadge' }) : null))));
+}
+function setTab(t) {
+  if (S.tab === 'scan' && t !== 'scan') { leaveScan(); if (S.scanMode === 'key') S.scanMode = null; }
+  S.tab = t; document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === t)); renderTab();
+}
+function updateBadge() {
+  const b = $('#flagBadge'); if (!b || !S.exam) return;
+  const n = flaggedPapers(S.exam).length; b.textContent = n || ''; b.style.display = n ? 'inline-block' : 'none';
+}
+function renderTab() {
+  const c = $('#content'); if (!c) return; c.replaceChildren();
+  const fn = { setup: setupView, students: studentsView, scan: scanView, results: resultsView }[S.tab];
+  c.append(fn()); c.scrollTop = 0; window.scrollTo(0, 0); updateBadge();
+  if (S.tab === 'scan') enterScan();
+}
+
+/* ---------------------------------------------------------------- setup */
+function field(label, input, hint) { return h('label', { class: 'field' }, h('span', null, label), input, hint ? h('small', { class: 'muted' }, hint) : null); }
+
+function setupView() {
+  const e = S.exam, locked = Object.keys(e.papers).length > 0;
+  const keySet = e.key.filter(k => k !== null).length;
+  const wrap = h('div', { class: 'pad stack' });
+
+  const numIn = h('input', { type: 'number', min: 1, max: 100, value: e.n, disabled: locked, inputmode: 'numeric' });
+  const kSel = h('select', { disabled: locked }, [2, 3, 4, 5, 6].map(k => h('option', { value: k, selected: e.k === k }, k + ' choices (' + LET.slice(0, k).split('').join(' ') + ')')));
+  const pSel = h('select', { disabled: locked }, [['A4', 'A4'], ['Letter', 'US Letter']].map(([v, l]) => h('option', { value: v, selected: e.paper === v }, l)));
+  const tryLayout = (patch) => { try { OGCore.makeLayout(Object.assign({ n: e.n, k: e.k, paper: e.paper }, patch)); return true; } catch (er) { toast(er.message); return false; } };
+  numIn.onchange = () => { const v = clamp(Math.round(+numIn.value || 1), 1, 100); if (!tryLayout({ n: v })) { numIn.value = e.n; return; } e.n = v; e.key = Array.from({ length: v }, (_, i) => e.key[i] ?? null); saveExam(); renderTab(); };
+  kSel.onchange = () => { const k = +kSel.value; if (!tryLayout({ k })) { kSel.value = e.k; return; } e.k = k; e.key = e.key.map(x => (x !== null && x >= k ? null : x)); saveExam(); renderTab(); };
+  pSel.onchange = () => { if (!tryLayout({ paper: pSel.value })) { pSel.value = e.paper; return; } e.paper = pSel.value; saveExam(); renderTab(); };
+  const nameIn = h('input', { type: 'text', value: e.name, dir: 'auto', onchange: ev => { e.name = ev.target.value.trim() || 'Exam'; $('#examTitle').textContent = e.name; saveExam(); } });
+  const titleIn = h('input', { type: 'text', value: e.title, dir: 'auto', placeholder: 'Printed at the top of the sheet', onchange: ev => { e.title = ev.target.value; saveExam(); renderTab(); } });
+  const ptsIn = h('input', { type: 'number', min: 0.25, step: 0.25, value: e.points, inputmode: 'decimal', onchange: ev => { e.points = clamp(+ev.target.value || 1, 0.25, 100); saveExam(); } });
+  const senSel = h('select', { onchange: ev => { e.sens = ev.target.value; saveExam(); } }, [['normal', 'Normal (pen or dark pencil)'], ['light', 'Sensitive (light pencil)']].map(([v, l]) => h('option', { value: v, selected: e.sens === v }, l)));
+
+  wrap.append(h('section', { class: 'card stack' }, h('h3', null, 'Exam'),
+    field('Exam name', nameIn), field('Number of questions (1–100)', numIn), field('Choices per question', kSel), field('Paper size', pSel),
+    field('Sheet title', titleIn), field('Points per question', ptsIn), field('Mark detection', senSel, 'Use “Sensitive” if students fill bubbles lightly. Doubtful marks always go to review.'),
+    locked ? h('small', { class: 'muted' }, 'Questions, choices and paper size are locked because papers were already scanned.') : null));
+
+  // answer key
+  const keyBox = h('textarea', { rows: 2, placeholder: 'Type or paste the key, e.g. ABCDDABCD…', dir: 'ltr', class: 'mono' });
+  const grid = h('div', { class: 'keygrid' });
+  const drawGrid = () => {
+    grid.replaceChildren();
+    for (let q = 0; q < e.n; q++) {
+      const row = h('div', { class: 'krow' }, h('span', { class: 'qn' }, q + 1));
+      for (let j = 0; j < e.k; j++) row.append(h('button', { class: 'chip' + (e.key[q] === j ? ' sel' : ''), onclick: () => { e.key[q] = e.key[q] === j ? null : j; saveExam(); drawGrid(); upd(); } }, LET[j]));
+      row.append(h('button', { class: 'chip small' + (e.key[q] === -1 ? ' sel' : ''), title: 'Everyone gets this question right', onclick: () => { e.key[q] = e.key[q] === -1 ? null : -1; saveExam(); drawGrid(); upd(); } }, 'All'));
+      grid.append(row);
+    }
+  };
+  const cnt = h('span', { class: 'pill' }); const upd = () => { const c = e.key.filter(k => k !== null).length; cnt.textContent = c + ' of ' + e.n + ' set'; cnt.className = 'pill ' + (c === e.n ? 'ok' : 'warn'); };
+  const applyKey = () => {
+    const t = keyBox.value.toUpperCase().replace(/[^A-F\-.*]/g, ''); if (!t) return toast('Type the key letters first');
+    for (let q = 0; q < e.n; q++) { const ch = t[q]; if (ch === undefined) break; const j = LET.indexOf(ch); e.key[q] = ch === '*' ? -1 : (j >= 0 && j < e.k ? j : null); }
+    saveExam(); drawGrid(); upd(); toast('Key applied');
+  };
+  wrap.append(h('section', { class: 'card stack' }, h('div', { class: 'row' }, h('h3', { class: 'grow' }, 'Answer key'), cnt),
+    keyBox, h('div', { class: 'row gap' }, h('button', { class: 'btn', onclick: applyKey }, 'Apply typed key'), h('button', { class: 'btn', onclick: () => { S.scanMode = 'key'; setTab('scan'); } }, '📷 Scan a key sheet')),
+    h('small', { class: 'muted' }, 'Tip: fill one blank sheet with the correct answers and scan it. Use “All” for a question that every student gets right.'), grid));
+  drawGrid(); upd();
+
+  // print
+  let prev; try { prev = h('div', { class: 'preview', html: '' }); prev.innerHTML = OGCore.sheetSVG(layoutOf(e)); } catch (er) { prev = h('p', { class: 'warn' }, er.message); }
+  wrap.append(h('section', { class: 'card stack' }, h('h3', null, 'Answer sheet'),
+    h('p', { class: 'muted' }, 'Print this sheet for your students. It has 4 black corner squares that the camera uses to find the page.'), prev,
+    h('div', { class: 'row gap' }, h('button', { class: 'btn primary', onclick: () => printSheet(e) }, '🖨 Print / save PDF'), h('button', { class: 'btn', onclick: () => downloadPng(e) }, 'Download image (PNG)'))));
+
+  // self test
+  const res = h('div', { class: 'muted' });
+  wrap.append(h('section', { class: 'card stack' }, h('h3', null, 'Check the scanner'),
+    h('p', { class: 'muted' }, 'Runs the scanner on a made-up photo of a tilted sheet with known answers.'),
+    h('button', { class: 'btn', onclick: ev => { ev.target.disabled = true; res.textContent = 'Testing…'; setTimeout(() => { try { const r = OGCore.selfTest({ n: e.n, k: e.k, paper: e.paper }, 1 + (Date.now() % 997)); res.className = r.pass ? 'ok-text' : 'bad-text'; res.textContent = r.pass ? '✓ Passed: all ' + r.total + ' answers read correctly (' + r.ms + ' ms).' : '✗ Failed. ' + (r.msg || (r.wrong + ' wrong answers.')); } catch (er) { res.className = 'bad-text'; res.textContent = 'Error: ' + er.message; } ev.target.disabled = false; }, 60); } }, 'Run test'), res));
+
+  wrap.append(h('section', { class: 'card stack' }, h('h3', null, 'Delete exam'),
+    h('button', { class: 'btn danger', onclick: async () => { if (!confirm('Delete “' + e.name + '” and all its scanned papers?')) return; await deleteExam(e.id); S.exam = null; render(); } }, 'Delete this exam')));
+  return wrap;
+}
+
+/* ---------------------------------------------------------------- students */
+function studentsView() {
+  const e = S.exam, wrap = h('div', { class: 'pad stack' });
+  const present = presentList(e).length;
+  const sum = h('div', { class: 'card' }, h('b', null, e.roster.length + ' students'), h('div', { class: 'muted' }, present + ' present · ' + (e.roster.length - present) + ' absent. Papers are scanned in this list order, skipping absent students.'));
+  const file = h('input', { type: 'file', accept: '.xlsx,.csv,.txt,.tsv', style: { display: 'none' }, onchange: async ev => {
+    const f = ev.target.files[0]; ev.target.value = ''; if (!f) return;
+    try {
+      let rows; if (/\.xlsx$/i.test(f.name)) rows = await OGXlsx.read(await f.arrayBuffer()); else if (/\.xls$/i.test(f.name)) return toast('Old .xls files are not supported. Save as .xlsx or .csv'); else rows = OGXlsx.parseCSV(await f.text());
+      applyRoster(parseRosterRows(rows));
+    } catch (er) { toast('Could not read this file: ' + er.message, 4000); }
+  } });
+  const paste = h('textarea', { rows: 6, dir: 'auto', placeholder: 'One student per line:\n1, Ahmed Ali\n2, Sara Mohamed\n\nOr just names (numbered automatically)' });
+  const pasteBox = h('div', { class: 'stack hidden' }, paste, h('button', { class: 'btn primary', onclick: () => { const r = parseRosterText(paste.value); if (!r.length) return toast('Nothing to add'); applyRoster(r); } }, 'Use this list'));
+  const sIn = h('input', { type: 'text', placeholder: 'Serial', inputmode: 'numeric', style: { width: '5.5em' } }), nIn = h('input', { type: 'text', dir: 'auto', placeholder: 'Student name', class: 'grow' });
+  const addRow = h('div', { class: 'row gap' }, sIn, nIn, h('button', { class: 'btn primary', onclick: () => {
+    const serial = sIn.value.trim() || String(e.roster.length + 1), name = nIn.value.trim(); if (!name && !sIn.value.trim()) return toast('Type a name or serial');
+    if (e.roster.some(s => s.serial === serial)) return toast('Serial ' + serial + ' already exists');
+    e.roster = sortRoster([...e.roster, { id: uid(), serial, name, absent: false }]); saveExam(); renderTab();
+  } }, 'Add'));
+  wrap.append(sum, h('div', { class: 'row gap wrap' }, h('button', { class: 'btn primary', onclick: () => file.click() }, '📥 Import Excel / CSV'), h('button', { class: 'btn', onclick: () => pasteBox.classList.toggle('hidden') }, '📋 Paste list'), file), pasteBox, addRow);
+  wrap.append(h('small', { class: 'muted' }, 'Excel file: put the serial in column A and the name in column B (a header row is fine).'));
+
+  function applyRoster(list) {
+    const hadPapers = Object.keys(e.papers).length > 0;
+    const bySerial = new Map(e.roster.map(s => [s.serial, s]));
+    const merged = list.map(s => { const old = bySerial.get(s.serial); return old ? { ...s, id: old.id, absent: old.absent } : s; });
+    const keepIds = new Set(merged.map(s => s.id)), lost = Object.keys(e.papers).filter(id => !keepIds.has(id));
+    if (lost.length && !confirm(lost.length + ' scanned paper(s) belong to students who are not in the new list. They will be deleted. Continue?')) return;
+    for (const id of lost) { delete e.papers[id]; store.del('img:' + e.id + ':' + id); }
+    e.roster = merged; e.cursor = null; saveExam(); toast(merged.length + ' students loaded'); renderTab();
+  }
+
+  const listEl = h('div', { class: 'list' });
+  if (!e.roster.length) listEl.append(h('p', { class: 'muted center' }, 'No student list. You can still scan: papers will be numbered 1, 2, 3… and you can add names later.'));
+  e.roster.forEach(s => {
+    const p = e.papers[s.id];
+    listEl.append(h('div', { class: 'srow' + (s.absent ? ' absent' : '') },
+      h('span', { class: 'serial' }, s.serial), h('span', { class: 'sname grow', dir: 'auto' }, s.name || h('i', { class: 'muted' }, '(no name)')),
+      p ? h('span', { class: 'pill ok' }, 'scanned') : null,
+      h('label', { class: 'switch', title: 'Absent' }, h('input', { type: 'checkbox', checked: s.absent, onchange: ev => { s.absent = ev.target.checked; if (s.absent && e.cursor === s.id) e.cursor = null; saveExam(); renderTab(); } }), h('span', null, 'Absent')),
+      h('button', { class: 'icon sm', 'aria-label': 'Remove ' + s.name, onclick: () => { if (p && !confirm('This student has a scanned paper. Remove both?')) return; delete e.papers[s.id]; store.del('img:' + e.id + ':' + s.id); e.roster = e.roster.filter(x => x.id !== s.id); saveExam(); renderTab(); } }, '✕')));
+  });
+  wrap.append(listEl);
+  if (e.roster.length) wrap.append(h('button', { class: 'btn danger', onclick: () => { if (!confirm('Remove ALL students and their scanned papers?')) return; for (const id of Object.keys(e.papers)) store.del('img:' + e.id + ':' + id); e.roster = []; e.papers = {}; e.cursor = null; saveExam(); renderTab(); } }, 'Clear student list'));
+  return wrap;
+}
+
+/* ---------------------------------------------------------------- results */
+function resultsView() {
+  const e = S.exam, wrap = h('div', { class: 'pad stack' });
+  const scanned = e.roster.filter(s => e.papers[s.id]), fl = flaggedPapers(e), pres = presentList(e).length;
+  const pct = scanned.length ? scanned.reduce((a, s) => { const sc = paperScore(e, e.papers[s.id]); return a + sc.pts / sc.outOf; }, 0) / scanned.length * 100 : 0;
+  wrap.append(h('div', { class: 'stats' },
+    h('div', { class: 'stat' }, h('b', null, scanned.length + (pres ? ' / ' + pres : '')), h('span', null, 'scanned')),
+    h('div', { class: 'stat' }, h('b', null, scanned.length ? Math.round(pct) + '%' : '–'), h('span', null, 'average')),
+    h('div', { class: 'stat' + (fl.length ? ' warn' : '') }, h('b', null, fl.length), h('span', null, 'to review'))));
+  if (e.key.some(k => k === null)) wrap.append(h('div', { class: 'warn' }, 'The answer key is not complete. Questions without a key count as wrong. Set it in Setup.'));
+  wrap.append(h('div', { class: 'row gap wrap' },
+    fl.length ? h('button', { class: 'btn primary', onclick: () => openPaperView(fl[0].id, { only: 'flagged', queue: true }) }, '⚠ Review ' + fl.length + ' paper' + (fl.length > 1 ? 's' : '')) : null,
+    h('button', { class: 'btn' + (fl.length ? '' : ' primary'), disabled: !scanned.length, onclick: () => exportXlsx(e) }, '⬇ Excel file'),
+    h('button', { class: 'btn', disabled: !scanned.length, onclick: () => exportCsv(e) }, 'CSV')));
+  const list = h('div', { class: 'list' });
+  if (!e.roster.length) list.append(h('p', { class: 'muted center' }, 'No papers yet.'));
+  e.roster.forEach(s => {
+    const p = e.papers[s.id];
+    if (!p) { list.append(h('div', { class: 'rrow dim' }, h('span', { class: 'serial' }, s.serial), h('span', { class: 'sname grow', dir: 'auto' }, s.name), h('span', { class: 'muted' }, s.absent ? 'absent' : 'not scanned'))); return; }
+    const sc = paperScore(e, p);
+    list.append(h('div', { class: 'rrow click', onclick: () => openPaperView(s.id, { only: sc.flags.length ? 'flagged' : 'all' }) },
+      h('span', { class: 'serial' }, s.serial), h('span', { class: 'sname grow', dir: 'auto' }, s.name || h('i', { class: 'muted' }, '(no name)')),
+      sc.flags.length ? h('span', { class: 'pill warn' }, '⚠ ' + sc.flags.length) : null, h('b', { class: 'score' }, fmt(sc.pts) + ' / ' + fmt(sc.outOf)), h('span', { class: 'chev' }, '›')));
+  });
+  wrap.append(list); return wrap;
+}
+
+/* ---------------------------------------------------------------- paper view / review */
+const TAGS = { blank: 'Blank', multi: 'More than one mark', unsure: 'Unclear mark', ok: 'Marked' };
+async function openPaperView(rid, opt) {
+  const e = S.exam, p = e.papers[rid], st = e.roster.find(s => s.id === rid); if (!p || !st) return;
+  opt = opt || {}; let only = opt.only || 'all';
+  const L = layoutOf(e);
+  let img = null; try { const blob = await store.get('img:' + e.id + ':' + rid); if (blob) { img = new Image(); const url = URL.createObjectURL(blob); await new Promise(ok => { img.onload = ok; img.onerror = ok; img.src = url; }); } } catch (er) { img = null; }
+  const ov = h('div', { class: 'overlay', role: 'dialog' }), body = h('div', { class: 'ovbody' }), head = h('div', { class: 'ovhead' });
+  const close = (finish) => { if (finish) { if (!p.reviewed) { p.reviewed = true; saveExam(); } } ov.remove(); document.body.classList.remove('noscroll'); if (opt.onClose) opt.onClose(); else { updateBadge(); if (S.tab === 'results') renderTab(); } };
+  const nextFlagged = () => flaggedPapers(e).find(s => s.id !== rid);
+
+  function drawHead() {
+    const sc = paperScore(e, p);
+    head.replaceChildren(
+      h('div', { class: 'row gap' }, h('button', { class: 'icon', 'aria-label': 'Close', onclick: () => close(false) }, '✕'),
+        h('div', { class: 'grow' }, h('b', { dir: 'auto' }, (st.serial ? st.serial + '. ' : '') + (st.name || 'Paper')), h('div', { class: 'muted small' }, sc.flags.length ? sc.flags.length + ' question(s) need your decision' : 'Nothing to review')),
+        h('b', { class: 'bigscore' }, fmt(sc.pts) + '/' + fmt(sc.outOf))),
+      h('div', { class: 'seg' }, h('button', { class: only === 'flagged' ? 'on' : '', onclick: () => { only = 'flagged'; drawAll(); } }, 'Needs review (' + sc.allFlags.length + ')'), h('button', { class: only === 'all' ? 'on' : '', onclick: () => { only = 'all'; drawAll(); } }, 'All questions')),
+      h('div', { class: 'muted small' }, '● marked by the student · green line = answer key'));
+  }
+  function crop(q) {
+    if (!img || !img.naturalWidth) return null;
+    const Q = L.questions[q], x0 = Q.box.x - 1, w = Q.box.w + 2, y0 = Q.labelY - L.rowPitch * 0.62, hh = L.rowPitch * 1.24;
+    const c = h('canvas', { class: 'crop', width: Math.round(w * IMG_PPM), height: Math.round(hh * IMG_PPM) });
+    c.getContext('2d').drawImage(img, x0 * IMG_PPM, y0 * IMG_PPM, w * IMG_PPM, hh * IMG_PPM, 0, 0, c.width, c.height); return c;
+  }
+  function card(q) {
+    const d = p.cls[q], r = qResult(e, p, q), res = p.res && p.res[q], key = e.key[q];
+    const setRes = (v) => { p.res = p.res || {}; if (v === null) delete p.res[q]; else p.res[q] = v; saveExam(); const n = card(q); cardEls[q].replaceWith(n); cardEls[q] = n; drawHead(); if (only === 'flagged' && r.flagged !== qResult(e, p, q).flagged) { /* keep card visible so you can undo */ } };
+    const chips = h('div', { class: 'chips' });
+    for (let j = 0; j < e.k; j++) {
+      const marked = d.m.includes(j), sel = res && res.c === j;
+      chips.append(h('button', { class: 'chip big' + (marked ? ' marked' : '') + (key === j ? ' iskey' : '') + (sel ? ' sel' : ''), onclick: () => setRes(sel ? null : { c: j }) }, (marked ? '● ' : '') + LET[j]));
+    }
+    const verdict = r.state === 'correct' ? ['✓ counts as correct', 'ok-text'] : r.state === 'wrong' ? ['✗ counts as wrong', 'bad-text'] : r.state === 'bonus' ? ['★ everyone gets this one', 'ok-text'] : r.state === 'nokey' ? ['No key set for this question', 'warn-text'] : ['⚠ not decided yet (counts 0)', 'warn-text'];
+    const el = h('div', { class: 'qcard' + (r.flagged ? ' flag' : '') },
+      h('div', { class: 'row' }, h('b', { class: 'qno' }, 'Q' + (q + 1)), h('span', { class: 'tag t-' + d.s }, TAGS[d.s]), res ? h('span', { class: 'tag t-set' }, 'you decided') : null, h('span', { class: 'grow' }), h('span', { class: 'muted' }, key === -1 ? 'Key: all' : key === null ? 'Key: not set' : 'Key: ' + LET[key])),
+      crop(q), chips,
+      h('div', { class: 'row gap wrap' },
+        h('button', { class: 'btn sm good' + (res && res.v === 'c' ? ' sel' : ''), onclick: () => setRes(res && res.v === 'c' ? null : { v: 'c' }) }, '✓ Count correct'),
+        h('button', { class: 'btn sm bad' + (res && res.v === 'w' ? ' sel' : ''), onclick: () => setRes(res && res.v === 'w' ? null : { v: 'w' }) }, '✗ Count wrong'),
+        res ? h('button', { class: 'btn sm', onclick: () => setRes(null) }, 'Undo') : null),
+      h('div', { class: verdict[1] + ' small' }, verdict[0]));
+    return el;
+  }
+  const cardEls = {};
+  function drawAll() {
+    drawHead(); body.replaceChildren();
+    const sc = paperScore(e, p), qs = []; for (let q = 0; q < e.n; q++) if (only === 'all' || sc.allFlags.includes(q) || (p.res && p.res[q] && p.cls[q].s !== 'ok')) qs.push(q);
+    if (!qs.length) body.append(h('p', { class: 'center muted' }, only === 'flagged' ? '✓ Nothing needs review on this paper.' : 'No questions'));
+    for (const q of qs) { const c = card(q); cardEls[q] = c; body.append(c); }
+    foot.replaceChildren(...[
+      h('button', { class: 'btn', onclick: () => { close(false); S.scanTarget = rid; e.cursor = rid; saveExam(); setTab('scan'); } }, '↻ Rescan'),
+      h('button', { class: 'btn', onclick: () => { if (!confirm('Delete this scanned paper?')) return; delete e.papers[rid]; store.del('img:' + e.id + ':' + rid); saveExam(); close(false); } }, 'Delete'),
+      h('span', { class: 'grow' }),
+      (opt.queue && nextFlagged()) ? h('button', { class: 'btn primary', onclick: () => { p.reviewed = p.reviewed || false; const nx = nextFlagged(); close(false); if (nx) openPaperView(nx.id, opt); } }, 'Next paper →') : null,
+      h('button', { class: 'btn primary', onclick: () => { const left = paperScore(e, p).flags.length; if (left && !confirm(left + ' question(s) are still undecided and will count as 0. Finish anyway?')) return; const nx = opt.queue && nextFlagged(); close(true); if (nx) openPaperView(nx.id, opt); } }, 'Done')].filter(Boolean));
+  }
+  const foot = h('div', { class: 'ovfoot' });
+  ov.append(head, body, foot); document.body.append(ov); document.body.classList.add('noscroll'); drawAll();
+}
+
+/* ===================== OpenGrade app — part C: camera scanner ===================== */
+const sc = { running: false, stream: null, video: null, ov: null, octx: null, cap: null, cctx: null, engine: null, ready: false, inflight: false, id: 0, lastSend: 0,
+  frames: [], waitNext: false, acceptedSig: null, lostSince: 0, busy: false, paused: false, recent: [], pending: {}, warpResolve: null, raf: 0, state: '', lastRes: null, cw: 0, ch: 0, ui: {}, torch: false };
+
+/* the engine runs in a Web Worker so the camera preview never freezes */
+function makeEngine(OG, post) {
+  let L = null, last = null;
+  return function (m) {
+    if (m.t === 'init') { L = OG.makeLayout(m.cfg); OG.TH.mark = m.th.mark; OG.TH.faint = m.th.faint; last = null; post({ t: 'ready' }); }
+    else if (m.t === 'frame') {
+      const t0 = Date.now();
+      try {
+        const gray = OG.toGray(new Uint8ClampedArray(m.buf), m.w * m.h), r = OG.scanGray(gray, m.w, m.h, L);
+        if (!r.ok) { post({ t: 'res', id: m.id, ok: false, reason: r.reason, w: m.w, h: m.h }); return; }
+        last = { gray, w: m.w, h: m.h, H: r.H };
+        const bp = new Float32Array(L.n * L.k * 2); let i = 0;
+        for (const Q of L.questions) for (const b of Q.bubbles) { const p = OG.applyH(r.H, b.cx, b.cy); bp[i++] = p[0]; bp[i++] = p[1]; }
+        post({ t: 'res', id: m.id, ok: true, pts: r.pts, fills: r.fills, align: r.align, bp, ms: Date.now() - t0, w: m.w, h: m.h }, [bp.buffer]);
+      } catch (err) { post({ t: 'res', id: m.id, ok: false, reason: 'error', msg: String(err) }); }
+    } else if (m.t === 'warp') {
+      if (!last) { post({ t: 'warp', ok: false }); return; }
+      const wg = OG.warpGray(last.gray, last.w, last.h, last.H, L, m.ppm);
+      post({ t: 'warp', ok: true, data: wg.data, w: wg.w, h: wg.h }, [wg.data.buffer]);
+    }
+  };
+}
+function mainEngine() { const hd = makeEngine(OGCore, m => setTimeout(() => onEngineMsg(m), 0)); return { kind: 'main', send: m => setTimeout(() => hd(m), 0), stop() { } }; }
+function createEngine() {
+  try {
+    const src = document.getElementById('coreScript').textContent + '\n;const __h=(' + makeEngine.toString() + ')(OGCore,(m,t)=>self.postMessage(m,t||[]));self.onmessage=e=>__h(e.data);';
+    const url = URL.createObjectURL(new Blob([src], { type: 'text/javascript' })), w = new Worker(url);
+    w.onmessage = ev => onEngineMsg(ev.data);
+    w.onerror = () => { if (!sc.ready) switchToMain(); };
+    return { kind: 'worker', send: (m, t) => w.postMessage(m, t || []), stop() { w.terminate(); URL.revokeObjectURL(url); } };
+  } catch (er) { return mainEngine(); }
+}
+function switchToMain() { try { sc.engine && sc.engine.stop(); } catch (e) { } sc.engine = mainEngine(); sendInit(); }
+function sendInit() { const e = S.exam; sc.ready = false; sc.engine.send({ t: 'init', cfg: { n: e.n, k: e.k, paper: e.paper }, th: SENS[e.sens] }); }
+function startEngine() {
+  const e = S.exam; OGCore.TH.mark = SENS[e.sens].mark; OGCore.TH.faint = SENS[e.sens].faint;
+  sc.engine = createEngine(); sendInit();
+  const eng = sc.engine; setTimeout(() => { if (!sc.ready && sc.engine === eng && eng.kind === 'worker') switchToMain(); }, 2500);
+}
+function onEngineMsg(m) {
+  if (m.t === 'ready') { sc.ready = true; return; }
+  if (m.t === 'warp') { const r = sc.warpResolve; sc.warpResolve = null; r && r(m.ok ? m : null); return; }
+  if (m.t === 'res') { if (sc.pending[m.id]) { const f = sc.pending[m.id]; delete sc.pending[m.id]; f(m); return; } onResult(m); }
+}
+
+/* ---------------------------------------------------------------- view */
+function scanView() {
+  const e = S.exam, keyMode = S.scanMode === 'key';
+  const U = sc.ui = {};
+  U.who = h('div', { class: 'grow' });
+  U.count = h('span', { class: 'pill' });
+  U.msg = h('div', { class: 'cammsg info' });
+  U.video = h('video', { playsinline: true, muted: true, autoplay: true });
+  U.video.muted = true;
+  U.ov = h('canvas', { class: 'ovcanvas' });
+  U.wrap = h('div', { class: 'camwrap' }, U.video, U.ov, U.msg);
+  U.recent = h('div', { class: 'list' });
+  U.torchBtn = h('button', { class: 'btn sm hidden', onclick: toggleTorch }, '🔦 Light');
+  U.cont = h('input', { type: 'checkbox', checked: e.continuous, onchange: ev => { e.continuous = ev.target.checked; saveExam(); sc.frames = []; } });
+  U.reviewSel = h('select', { onchange: ev => { e.review = ev.target.value; saveExam(); } }, [['each', 'Review after each paper'], ['end', 'Review at the end']].map(([v, l]) => h('option', { value: v, selected: e.review === v }, l)));
+  U.photoIn = h('input', { type: 'file', accept: 'image/*', multiple: true, style: { display: 'none' }, onchange: ev => { const fs = [...ev.target.files]; ev.target.value = ''; if (fs.length) scanPhotos(fs); } });
+  U.retry = h('button', { class: 'btn primary hidden', onclick: () => startCamera() }, 'Try camera again');
+
+  const top = keyMode
+    ? h('div', { class: 'card keybanner' }, h('b', null, '🔑 Scanning the KEY sheet'), h('div', { class: 'muted' }, 'Hold the sheet that has the correct answers filled in.'), h('button', { class: 'btn sm', onclick: () => { S.scanMode = null; renderTab(); } }, 'Cancel'))
+    : h('div', { class: 'card row gap' }, U.who, U.count, h('button', { class: 'btn sm', onclick: pickStudent }, 'Change'));
+  const wrap = h('div', { class: 'pad stack' }, top, U.wrap, U.retry,
+    h('div', { class: 'row gap wrap' }, h('button', { class: 'btn primary grow', onclick: () => manualCapture() }, '● Scan now'), U.torchBtn),
+    h('div', { class: 'card stack' },
+      h('label', { class: 'switch wide' }, U.cont, h('span', null, 'Continuous scanning (auto-scan each paper, then show the next one)')),
+      field('Questions with several marks or blanks', U.reviewSel),
+      h('div', { class: 'row gap wrap' }, h('button', { class: 'btn', onclick: () => U.photoIn.click() }, '🖼 Scan from photos'), U.photoIn),
+      h('small', { class: 'muted' }, 'Tip: keep all 4 black corner squares inside the picture. Good light, no shadow, hold still for a moment.')),
+    keyMode ? null : h('h4', null, 'Recent scans'), keyMode ? null : U.recent);
+  return wrap;
+}
+
+function setMsg(kind, text) { const m = sc.ui.msg; if (!m) return; m.className = 'cammsg ' + kind; m.textContent = text; }
+function updateScanUI() {
+  const e = S.exam, U = sc.ui; if (!U.who || !e) return;
+  if (S.scanMode !== 'key') {
+    const nx = nextStudent(e), pres = presentList(e).length, done = e.roster.filter(s => !s.absent && e.papers[s.id]).length;
+    U.who.replaceChildren(nx ? h('div', null, h('div', { class: 'muted small' }, e.cursor ? 'Rescanning' : 'Next paper'), h('b', { dir: 'auto' }, nx.serial + '. ' + (nx.name || ''))) : h('div', null, h('b', null, e.roster.length ? '✓ Everyone present is scanned' : 'Paper ' + (Object.keys(e.papers).length + 1)), e.roster.length ? h('div', { class: 'muted small' }, 'Tap “Change” to rescan a student') : null));
+    U.count.textContent = e.roster.length ? done + ' / ' + pres : Object.keys(e.papers).length + ' scanned';
+    U.recent.replaceChildren(...sc.recent.slice(0, 6).map(r => h('div', { class: 'rrow click', onclick: () => r.rid && e.papers[r.rid] && openPaperView(r.rid, { only: r.flags ? 'flagged' : 'all' }) }, h('span', { class: 'sname grow', dir: 'auto' }, r.name), r.flags ? h('span', { class: 'pill warn' }, '⚠ ' + r.flags) : null, h('b', null, r.score))));
+  }
+  updateBadge();
+}
+
+function pickStudent() {
+  const e = S.exam; if (!e.roster.length) return toast('Add students first (Students tab)');
+  const ov = h('div', { class: 'overlay' }), q = h('input', { type: 'search', placeholder: 'Search name or serial', dir: 'auto' }), list = h('div', { class: 'list' });
+  const draw = () => { list.replaceChildren(); const t = q.value.trim().toLowerCase(); e.roster.filter(s => !t || (s.name + ' ' + s.serial).toLowerCase().includes(t)).forEach(s => list.append(h('div', { class: 'srow click' + (s.absent ? ' absent' : ''), onclick: () => { e.cursor = s.id; saveExam(); ov.remove(); updateScanUI(); sc.waitNext = false; } }, h('span', { class: 'serial' }, s.serial), h('span', { class: 'grow', dir: 'auto' }, s.name), e.papers[s.id] ? h('span', { class: 'pill ok' }, 'scanned') : null, s.absent ? h('span', { class: 'pill' }, 'absent') : null))); };
+  q.oninput = draw; draw();
+  ov.append(h('div', { class: 'ovhead' }, h('div', { class: 'row gap' }, h('b', { class: 'grow' }, 'Scan the next paper for…'), h('button', { class: 'icon', onclick: () => ov.remove() }, '✕')), q), h('div', { class: 'ovbody' }, list),
+    h('div', { class: 'ovfoot' }, h('button', { class: 'btn', onclick: () => { e.cursor = null; saveExam(); ov.remove(); updateScanUI(); } }, 'Back to automatic order')));
+  document.body.append(ov);
+}
+
+/* ---------------------------------------------------------------- camera */
+async function enterScan() {
+  const e = S.exam; sc.frames = []; sc.waitNext = false; sc.acceptedSig = null; sc.lostSince = 0; sc.paused = false; sc.busy = false;
+  sc.video = sc.ui.video; sc.ov = sc.ui.ov; sc.octx = sc.ov.getContext('2d');
+  sc.cap = sc.cap || document.createElement('canvas'); sc.cctx = sc.cap.getContext('2d', { willReadFrequently: true });
+  try { OGCore.makeLayout({ n: e.n, k: e.k, paper: e.paper }); } catch (er) { setMsg('bad', er.message); return; }
+  if (!e.key.some(k => k !== null) && S.scanMode !== 'key') setMsg('warn', 'Tip: set the answer key first (Setup tab).');
+  updateScanUI(); startEngine(); startCamera();
+}
+async function startCamera() {
+  const U = sc.ui; U.retry && U.retry.classList.add('hidden');
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { setMsg('bad', 'The camera needs a secure (https) link. Open the website from its https address, or use “Scan from photos”.'); U.retry.classList.remove('hidden'); return; }
+  try {
+    sc.stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } } });
+  } catch (er) {
+    const n = er && er.name; setMsg('bad', n === 'NotAllowedError' ? 'Camera is blocked. Allow the camera for this website in your browser settings, then tap “Try camera again”.' : n === 'NotFoundError' ? 'No camera found on this device.' : 'Could not start the camera: ' + (er.message || n));
+    U.retry.classList.remove('hidden'); return;
+  }
+  if (S.tab !== 'scan' || !sc.ui.video) { sc.stream.getTracks().forEach(t => t.stop()); return; }
+  const v = sc.video; v.srcObject = sc.stream;
+  v.onloadedmetadata = () => { U.wrap.style.aspectRatio = v.videoWidth + ' / ' + v.videoHeight; };
+  try { await v.play(); } catch (er) { }
+  const tr = sc.stream.getVideoTracks()[0], caps = tr && tr.getCapabilities ? tr.getCapabilities() : {}; if (caps && caps.torch) U.torchBtn.classList.remove('hidden');
+  sc.running = true; setMsg('info', 'Point the camera at the sheet. All 4 black corner squares must be visible.'); cancelAnimationFrame(sc.raf); loop();
+}
+function toggleTorch() { try { const tr = sc.stream.getVideoTracks()[0]; sc.torch = !sc.torch; tr.applyConstraints({ advanced: [{ torch: sc.torch }] }); } catch (er) { toast('Light not supported'); } }
+function leaveScan() {
+  sc.running = false; cancelAnimationFrame(sc.raf);
+  if (sc.stream) { sc.stream.getTracks().forEach(t => t.stop()); sc.stream = null; }
+  if (sc.engine) { sc.engine.stop(); sc.engine = null; }
+  sc.inflight = false; sc.pending = {}; sc.ui = {}; sc.torch = false;
+}
+function loop() {
+  if (!sc.running) return;
+  const now = performance.now(), v = sc.video;
+  if (!sc.inflight && !sc.paused && !sc.busy && sc.ready && v && v.readyState >= 2 && v.videoWidth && now - sc.lastSend > 90) { sc.lastSend = now; sendFrame(); }
+  sc.raf = requestAnimationFrame(loop);
+}
+function grabFrame(src, sw, sh) {
+  const sc2 = Math.min(1, 1600 / Math.max(sw, sh)), cw = Math.round(sw * sc2), ch = Math.round(sh * sc2);
+  if (sc.cap.width !== cw || sc.cap.height !== ch) { sc.cap.width = cw; sc.cap.height = ch; }
+  sc.cctx.drawImage(src, 0, 0, cw, ch); return { img: sc.cctx.getImageData(0, 0, cw, ch), cw, ch };
+}
+function sendFrame() {
+  const v = sc.video, f = grabFrame(v, v.videoWidth, v.videoHeight); sc.cw = f.cw; sc.ch = f.ch; sc.inflight = true;
+  sc.engine.send({ t: 'frame', id: ++sc.id, w: f.cw, h: f.ch, buf: f.img.data.buffer }, [f.img.data.buffer]);
+}
+
+/* ---------------------------------------------------------------- reading frames */
+const sigOf = c => c.s + c.m.join('');
+const sigDiff = (a, b) => { let d = 0; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) d++; return d; };
+
+function onResult(m) {
+  sc.inflight = false;
+  if (!sc.running || sc.paused || sc.busy || !S.exam) return;
+  const e = S.exam, now = Date.now(); sc.lastRes = m;
+  if (!m.ok) {
+    sc.frames = []; if (!sc.lostSince) sc.lostSince = now; if (now - sc.lostSince > 600) sc.waitNext = false;
+    drawOverlay(null);
+    if (m.reason === 'align') setMsg('warn', 'Corners found, but the bubbles do not line up. Is this the right sheet? Hold it flat.');
+    else if (m.reason === 'error') setMsg('bad', 'Scanner error: ' + m.msg);
+    else if (sc.waitNext) setMsg('ok', '✓ Scanned. Show the next paper.');
+    else setMsg('info', 'Point the camera at the sheet. All 4 black corner squares must be visible.');
+    return;
+  }
+  sc.lostSince = 0;
+  const cls = OGCore.classifyAll(m.fills), sig = cls.map(sigOf);
+  if (sc.waitNext) {
+    if (sigDiff(sig, sc.acceptedSig) >= Math.max(4, Math.ceil(e.n * 0.15))) { sc.waitNext = false; sc.frames = []; }
+    else { drawOverlay(m, cls, 'done'); setMsg('ok', '✓ Scanned. Show the next paper.'); return; }
+  }
+  sc.frames.push({ sig, cls, fills: m.fills }); if (sc.frames.length > 15) sc.frames.shift();
+  const F = sc.frames, n = F.length, same3 = n >= 3 && F[n - 1].sig.join() === F[n - 2].sig.join() && F[n - 2].sig.join() === F[n - 3].sig.join();
+  drawOverlay(m, cls, same3 ? 'stable' : 'hold');
+  if (!e.continuous && S.scanMode !== 'key') { setMsg(same3 ? 'ok' : 'info', same3 ? 'Ready — tap “Scan now”.' : 'Hold still…'); return; }
+  if (same3) { acceptFrames(false); return; }
+  if (n >= 15) { acceptFrames(true); return; }
+  setMsg('info', 'Hold still… ' + Math.min(3, countSame(F)) + '/3');
+}
+function countSame(F) { let c = 1; for (let i = F.length - 2; i >= 0 && F[i].sig.join() === F[F.length - 1].sig.join(); i--) c++; return c; }
+
+function meanFrames(F) {                      // used when the picture keeps flickering: average, and flag unstable questions
+  const e = S.exam, fills = F[0].fills.map((row, q) => row.map((_, j) => F.reduce((a, f) => a + f.fills[q][j], 0) / F.length));
+  const cls = OGCore.classifyAll(fills);
+  cls.forEach((c, q) => { if (new Set(F.map(f => f.sig[q])).size > 1 && c.s === 'ok') { c.s = 'unsure'; } });
+  return cls;
+}
+function manualCapture() {
+  if (sc.busy) return;
+  const F = sc.frames; if (!F.length) { if (sc.lastRes && sc.lastRes.ok) { const cls = OGCore.classifyAll(sc.lastRes.fills); sc.frames = [{ sig: cls.map(sigOf), cls, fills: sc.lastRes.fills }]; } else return toast('No sheet in view yet'); }
+  acceptFrames(sc.frames.length >= 3 ? true : false, true);
+}
+
+/* ---------------------------------------------------------------- accepting a paper */
+async function requestWarp() {
+  return new Promise(res => { sc.warpResolve = res; sc.engine.send({ t: 'warp', ppm: IMG_PPM }); setTimeout(() => { if (sc.warpResolve === res) { sc.warpResolve = null; res(null); } }, 5000); });
+}
+function warpBlob(w) {
+  const c = document.createElement('canvas'); c.width = w.w; c.height = w.h; const x = c.getContext('2d'), id = x.createImageData(w.w, w.h), d = id.data, g = w.data;
+  for (let i = 0, j = 0; i < g.length; i++, j += 4) { d[j] = d[j + 1] = d[j + 2] = g[i]; d[j + 3] = 255; }
+  x.putImageData(id, 0, 0); return new Promise(ok => c.toBlob(b => ok(b), 'image/jpeg', 0.78));
+}
+
+async function acceptFrames(useMean, manual, opts) {
+  opts = opts || {};
+  const e = S.exam, F = sc.frames.slice(); if (!F.length) return;
+  sc.busy = true;
+  const cls = useMean ? meanFrames(F) : F[F.length - 1].cls, sig = cls.map(sigOf);
+  try {
+    if (S.scanMode === 'key') { await applyKeySheet(cls); return; }
+    let target = nextStudent(e);
+    if (!target) {
+      if (e.roster.length) { setMsg('ok', '✓ Everyone present is scanned. Tap “Change” to rescan someone.'); sc.waitNext = true; sc.acceptedSig = sig; sc.frames = []; return; }
+      target = { id: uid(), serial: String(Object.keys(e.papers).length + 1), name: '', absent: false }; e.roster.push(target);
+    }
+    const warp = opts.warp || await requestWarp(), blob = warp ? await warpBlob(warp) : null;
+    e.papers[target.id] = { cls: cls.map(c => ({ s: c.s, m: c.m, d: c.d })), res: {}, reviewed: false, at: Date.now() };
+    if (blob) await store.set('img:' + e.id + ':' + target.id, blob);
+    if (e.cursor === target.id) e.cursor = null;
+    await saveExam(true);
+    const p = e.papers[target.id], ps = paperScore(e, p);
+    sc.recent.unshift({ rid: target.id, name: (target.serial + '. ' + target.name).trim(), score: fmt(ps.pts) + '/' + fmt(ps.outOf), flags: ps.flags.length }); sc.recent = sc.recent.slice(0, 20);
+    beep(ps.flags.length ? 600 : 880); buzz(ps.flags.length ? [60, 60, 60] : 60);
+    if (sc.ui.wrap) { sc.ui.wrap.classList.add('flash'); setTimeout(() => sc.ui.wrap && sc.ui.wrap.classList.remove('flash'), 350); }
+    sc.waitNext = true; sc.acceptedSig = sig; sc.frames = []; sc.lostSince = 0;
+    setMsg(ps.flags.length ? 'warn' : 'ok', '✓ ' + (target.name || 'Paper ' + target.serial) + ': ' + fmt(ps.pts) + '/' + fmt(ps.outOf) + (ps.flags.length ? '  —  ' + ps.flags.length + ' to review' : ''));
+    updateScanUI(); drawOverlay(null);
+    if (ps.flags.length && e.review === 'each' && !opts.noReview) {
+      sc.paused = true; sc.busy = false;
+      openPaperView(target.id, { only: 'flagged', onClose: () => { sc.paused = false; sc.inflight = false; updateScanUI(); } });
+    }
+  } catch (er) { console.error(er); toast('Could not save this paper: ' + (er.message || er), 4000); }
+  finally { sc.busy = false; }
+}
+
+async function applyKeySheet(cls) {
+  const e = S.exam; let set = 0; const bad = [];
+  cls.forEach((c, q) => { if (c.s === 'ok') { e.key[q] = c.m[0]; set++; } else bad.push(q + 1); });
+  await saveExam(true); beep(880); buzz(80); S.scanMode = null;
+  toast('Key read: ' + set + ' of ' + e.n + ' answers.' + (bad.length ? ' Check Q' + bad.slice(0, 8).join(', ') + (bad.length > 8 ? '…' : '') + ' by hand.' : ''), 5000);
+  setTab('setup');
+}
+
+/* ---------------------------------------------------------------- scan from photos */
+async function scanPhotos(files) {
+  const e = S.exam; if (!sc.engine) return; sc.busy = true; let ok = 0, fail = 0;
+  try {
+    await new Promise(r => { const t0 = Date.now(); const w = () => (sc.ready || Date.now() - t0 > 4000) ? r() : setTimeout(w, 50); w(); });
+    for (const f of files) {
+      setMsg('info', 'Reading photo ' + (ok + fail + 1) + ' of ' + files.length + '…');
+      let bmp; try { bmp = await createImageBitmap(f, { imageOrientation: 'from-image' }); } catch (er) { try { bmp = await createImageBitmap(f); } catch (e2) { fail++; continue; } }
+      const fr = grabFrame(bmp, bmp.width, bmp.height); if (bmp.close) bmp.close();
+      const id = ++sc.id, m = await new Promise(res => { sc.pending[id] = res; sc.engine.send({ t: 'frame', id, w: fr.cw, h: fr.ch, buf: fr.img.data.buffer }, [fr.img.data.buffer]); });
+      if (!m.ok) { fail++; toast('Photo ' + (ok + fail) + ': ' + (m.reason === 'align' ? 'sheet not recognised' : 'could not find the 4 corner squares'), 3000); continue; }
+      const cls = OGCore.classifyAll(m.fills); sc.frames = [{ sig: cls.map(sigOf), cls, fills: m.fills }];
+      const warp = await requestWarp(); sc.busy = false; await acceptFrames(false, true, { warp, noReview: files.length > 1 }); sc.busy = true;
+      if (S.scanMode === 'key') break; ok++;
+    }
+  } finally { sc.busy = false; sc.waitNext = false; sc.frames = []; }
+  if (S.scanMode !== 'key') { setMsg(fail ? 'warn' : 'ok', ok + ' photo(s) scanned' + (fail ? ', ' + fail + ' failed' : '') + '.'); updateScanUI(); }
+}
+
+/* ---------------------------------------------------------------- overlay */
+function drawOverlay(m, cls, state) {
+  const o = sc.ov, x = sc.octx; if (!o || !x) return;
+  const cw = (m && m.w) || sc.cw || 640, ch = (m && m.h) || sc.ch || 480; if (o.width !== cw || o.height !== ch) { o.width = cw; o.height = ch; }
+  x.clearRect(0, 0, cw, ch); if (!m || !m.ok) return;
+  const e = S.exam, col = state === 'done' ? '#19c37d' : state === 'stable' ? '#19c37d' : '#ffb020', lw = Math.max(2, cw / 300);
+  x.lineWidth = lw * 1.5; x.strokeStyle = col; x.beginPath(); m.pts.forEach((p, i) => i ? x.lineTo(p.x, p.y) : x.moveTo(p.x, p.y)); x.closePath(); x.stroke();
+  if (!m.bp || !cls) return;
+  const k = e.k, bp = m.bp, sp = Math.hypot(bp[2] - bp[0], bp[3] - bp[1]), r = Math.max(2, sp * 0.3);
+  x.lineCap = 'round';
+  for (let q = 0; q < e.n; q++) {
+    const c = cls[q], base = q * k * 2;
+    if (c.s !== 'ok') {                        // coloured band behind rows that need a decision
+      x.beginPath(); x.moveTo(bp[base], bp[base + 1]); x.lineTo(bp[base + (k - 1) * 2], bp[base + (k - 1) * 2 + 1]);
+      x.strokeStyle = c.s === 'blank' ? 'rgba(255,176,32,.55)' : c.s === 'multi' ? 'rgba(255,70,60,.5)' : 'rgba(255,176,32,.55)'; x.lineWidth = r * 2.9; x.stroke();
+    }
+    for (let j = 0; j < k; j++) {
+      const px = bp[base + j * 2], py = bp[base + j * 2 + 1];
+      if (c.m.includes(j)) { x.beginPath(); x.arc(px, py, r, 0, 7); x.fillStyle = c.s === 'ok' ? 'rgba(25,195,125,.9)' : 'rgba(210,40,40,.9)'; x.fill(); }
+    }
+  }
+}
+
+
+/* ---------------------------------------------------------------- start */
+(async function init() {
+  try { await store.open(); await loadIndex(); } catch (e) { console.error(e); }
+  try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) { }
+  render();
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { });
+  window.addEventListener('pagehide', () => { try { saveExam(true); } catch (e) { } });
+})();
+</script>
+</body>
+</html>
