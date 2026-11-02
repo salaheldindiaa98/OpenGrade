@@ -243,15 +243,25 @@ function hullIdx(P) {                       // indices of the convex hull of can
   for (let t = idx.length - 1; t >= 0; t--) { const i = idx[t]; while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], i) <= 0) up.pop(); up.push(i); }
   lo.pop(); up.pop(); return lo.concat(up);
 }
-function pickQuad(cands, L) {
+function pickQuad(cands, L, wide) {      // wide = second, slower pass for busy pages (many blobs): looks at more candidates
   const m = L.markers, ar = (m[1].cx - m[0].cx) / (m[3].cy - m[0].cy), src = m.map(q => [q.cx, q.cy]);
   cands.sort((a, b) => b.area - a.area);
   const hull = hullIdx(cands), pickSet = new Set(hull);        // the corner squares sit at the extremes of the page, so always keep the outermost candidates
-  for (let i = 0; i < cands.length && pickSet.size < 22 && i < 12; i++) pickSet.add(i);
-  const c = [...pickSet].sort((a, b) => a - b).slice(0, 22).map(i => cands[i]);
-  const found = [];
-  for (let a = 0; a < c.length; a++) for (let b = a + 1; b < c.length; b++)
-  for (let d = b + 1; d < c.length; d++) for (let e = d + 1; e < c.length; e++) {
+  for (let i = 0; i < cands.length && (wide || pickSet.size < 22) && i < 12; i++) pickSet.add(i);
+  if (wide && cands.length > pickSet.size) {                 // a busy page (printed text, filled bubbles) can bury the real squares: also keep the blobs whose size is most typical
+    const med = cands.map(q => q.area).sort((x, y) => x - y)[cands.length >> 1];
+    const rest = cands.map((q, i) => i).filter(i => !pickSet.has(i)).sort((i, j) => Math.abs(Math.log(cands[i].area / med)) - Math.abs(Math.log(cands[j].area / med)));
+    for (const i of rest) { if (pickSet.size >= 40) break; pickSet.add(i); }
+  }
+  const c = [...pickSet].sort((a, b) => a - b).slice(0, wide ? 40 : 22).map(i => cands[i]);
+  const sz = m.map(q => q.s), cap = 3 * Math.pow(Math.max.apply(null, sz) / Math.min.apply(null, sz), 2);   // the squares must be about the size the sheet says (perspective allows some change; some sheets have one bigger corner square)
+  const found = [], simA = wide ? (p, q) => p.area <= cap * q.area && q.area <= cap * p.area : () => true;
+  for (let a = 0; a < c.length; a++) for (let b = a + 1; b < c.length; b++) {
+    if (!simA(c[a], c[b])) continue;
+  for (let d = b + 1; d < c.length; d++) {
+    if (!simA(c[a], c[d]) || !simA(c[b], c[d])) continue;
+  for (let e = d + 1; e < c.length; e++) {
+    if (!simA(c[a], c[e]) || !simA(c[b], c[e]) || !simA(c[d], c[e])) continue;
     const four = [c[a], c[b], c[d], c[e]];
     const gx = (four[0].cx + four[1].cx + four[2].cx + four[3].cx) / 4, gy = (four[0].cy + four[1].cy + four[2].cy + four[3].cy) / 4;
     const ring = four.slice().sort((p, q) => Math.atan2(p.cy - gy, p.cx - gx) - Math.atan2(q.cy - gy, q.cx - gx));   // clockwise on screen
@@ -285,7 +295,7 @@ function pickQuad(cands, L) {
       if (err > 0.3) continue;
       found.push({ err, area, pts });
     }
-  }
+  }}}
   found.sort((p, q) => (p.err - q.err) || (q.area - p.area));
   return found.slice(0, 6);
 }
@@ -301,7 +311,7 @@ function isolated(bin, w, h, c) {       // a real corner square has clean white 
   return tot > 0 && dark / tot < 0.10;
 }
 
-function findMarkers(g, w, h, L) {      // ranked list of possible corner sets (each: 4 points TL,TR,BR,BL)
+function findMarkers(g, w, h, L, wide) {      // ranked list of possible corner sets (each: 4 points TL,TR,BR,BL)
   const D = Math.max(w, h);
   const half = Math.max(15, Math.round(0.06 * D));
   const bin = adaptiveDark(g, w, h, half, 18);
@@ -309,7 +319,7 @@ function findMarkers(g, w, h, L) {      // ranked list of possible corner sets (
     .filter(c => c.ratio >= 0.63 && c.ratio <= 0.86 && c.elong >= 0.5 && isolated(bin, w, h, c));
   const out = []; out.comps = comps; out.errs = [];
   if (comps.length < 4) return out;
-  for (const q of pickQuad(comps, L)) { out.push(q.pts.map(p => ({ x: p.cx, y: p.cy }))); out.errs.push(q.err); }
+  for (const q of pickQuad(comps, L, wide)) { out.push(q.pts.map(p => ({ x: p.cx, y: p.cy }))); out.errs.push(q.err); }
   return out;
 }
 
@@ -374,6 +384,9 @@ function readFills(g, w, h, H, L) {
       return Math.max(0, Math.min(1, d));
     }));
   }
+  // A real photo is blurrier and darker than the clean picture the sheet map was made from, so EMPTY bubbles look a little dark (and more so near a fold or shadow).
+  // In every row most bubbles are empty, so the lightest bubble of the row tells us that local level: take it off (but never more than 0.15, so a row with every bubble filled still shows as filled).
+  for (const row of fills) { const m = Math.min.apply(null, row); if (m > 0.02) { const off = Math.min(0.15, m); for (let j = 0; j < row.length; j++) row[j] = Math.max(0, (row[j] - off) / (1 - off)); } }
   // alignment check: printed rings should be dark, just outside them should be white
   let al = 0, cnt = 0;
   const step = Math.max(1, Math.floor(n / 24));
@@ -401,7 +414,7 @@ function classifyRow(d) {
   if (marks.length >= 2) return { s: 'multi', m: marks, d: round };
   if (marks.length === 1) {
     const second = d[idx[1]];
-    return { s: second >= TH.faint ? 'unsure' : 'ok', m: marks, d: round };
+    return { s: second >= Math.max(TH.faint, 0.35 * d[idx[0]]) ? 'unsure' : 'ok', m: marks, d: round };      // a faint second bubble only matters if it is not just spill-over from a dark mark
   }
   if (d[idx[0]] >= TH.faint) return { s: 'unsure', m: [idx[0]], d: round };
   return { s: 'blank', m: [], d: round };
@@ -437,9 +450,24 @@ function scanGray(gray, w, h, L, opts) {
   opts = opts || {};
   const minAlign = L.minAlign || MIN_ALIGN;
   const ds = downscale(gray, w, h, opts.maxSide || 900);
-  const sets = findMarkers(ds.g, ds.w, ds.h, L);
+  let sets = findMarkers(ds.g, ds.w, ds.h, L, false);
+  const first = scanWith(sets);
+  if (first.ok) return first;
+  if (sets.comps.length > 8) { const sets2 = findMarkers(ds.g, ds.w, ds.h, L, true); if (sets2.length) { const second = scanWith(sets2); if (second.ok || !sets.length) return second; } }
+  return first;
+  function scanWith(sets) {
   if (!sets.length) return { ok: false, reason: 'markers' };
   const src = L.markers.map(m => [m.cx, m.cy]);
+  // Pale printed rings vanish in a blurry or dim picture. If the sheet has extra black squares (like ZipGrade's 6), finding them exactly where the map predicts is strong proof too.
+  const extraOK = H => {
+    if (!(L.extra && L.extra.length >= 2 && sets.comps && sets.comps.length)) return false;
+    let hit = 0;
+    for (const m of L.extra) {
+      const p = applyH(H, m.cx, m.cy), tol = Math.max(4, 0.5 * m.s * hScale(H, m.cx, m.cy));
+      for (const c of sets.comps) { const cx = c.cx * ds.f + (ds.f - 1) / 2, cy = c.cy * ds.f + (ds.f - 1) / 2; if (Math.hypot(cx - p[0], cy - p[1]) < tol) { hit++; break; } }
+    }
+    return hit >= Math.max(2, Math.ceil(0.75 * L.extra.length));
+  };
   let best = null;
   for (let i = 0; i < sets.length; i++) {
     const tie = sets.errs[i] <= sets.errs[0] + 0.03;     // sheets with 4 identical squares look the same turned 180 degrees: try them all, keep the best fit
@@ -448,10 +476,14 @@ function scanGray(gray, w, h, L, opts) {
     const H = solveH(src, pts.map(p => [p.x, p.y]));
     if (!H) continue;
     const rd = readFills(gray, w, h, H, L);
-    if (!best || rd.align > best.align) best = { ok: true, pts, H, fills: rd.fills, align: rd.align, white: rd.white };
+    let score = rd.align, byExtra = false;
+    if (rd.align < minAlign && extraOK(H)) {      // weak rings but the extra squares fit: rank by how much real ink sits on the bubbles (tells a sheet from the same sheet turned upside down)
+      let ink = 0; for (const row of rd.fills) ink += Math.max.apply(null, row); score = -0.5 + ink / Math.max(1, rd.fills.length); byExtra = true;
+    }
+    if (!best || score > best.score) best = { ok: true, pts, H, fills: rd.fills, align: rd.align, white: rd.white, score, byExtra };
   }
   if (!best) return { ok: false, reason: 'geometry' };
-  if (best.align < minAlign) return { ok: false, reason: 'align', align: best.align };
+  if (best.align < minAlign && !best.byExtra) return { ok: false, reason: 'align', align: best.align };
   if (L.extra && L.extra.length && sets.comps && sets.comps.length) {      // use the extra squares too, for a more exact fit
     const pairs = best.pts.map((p, i) => [[L.markers[i].cx, L.markers[i].cy], [p.x, p.y]]);
     for (const m of L.extra) {
@@ -461,10 +493,11 @@ function scanGray(gray, w, h, L, opts) {
     }
     if (pairs.length > 4) {
       const H2 = lsH(pairs.map(q => q[0]), pairs.map(q => q[1]));
-      if (H2) { const rd = readFills(gray, w, h, H2, L); if (rd.align >= best.align - 0.01) best = { ok: true, pts: best.pts, H: H2, fills: rd.fills, align: rd.align, white: rd.white }; }
+      if (H2) { const rd = readFills(gray, w, h, H2, L); if (best.byExtra || rd.align >= best.align - 0.01) best = { ok: true, pts: best.pts, H: H2, fills: rd.fills, align: rd.align, white: rd.white, score: best.score, byExtra: best.byExtra }; }
     }
   }
   return best;
+  }
 }
 
 // straightened grayscale picture of the sheet (for saving / review crops)
@@ -1763,7 +1796,7 @@ function onResult(m) {
   if (!m.ok) {
     sc.frames = []; if (!sc.lostSince) sc.lostSince = now; if (now - sc.lostSince > 600) sc.waitNext = false;
     drawOverlay(null);
-    if (m.reason === 'align') setMsg('warn', 'Corners found, but the bubbles do not line up. Is this the right sheet? Hold it flat.');
+    if (m.reason === 'align') setMsg('warn', 'Corners found, but the bubbles do not line up. Check it is the right sheet, hold it flat, and keep the phone about 25 cm away so the picture is sharp.');
     else if (m.reason === 'error') setMsg('bad', 'Scanner error: ' + m.msg);
     else if (sc.waitNext) setMsg('ok', '✓ Scanned. Show the next paper.');
     else setMsg('info', 'Point the camera at the sheet. All 4 black corner squares must be visible.');
